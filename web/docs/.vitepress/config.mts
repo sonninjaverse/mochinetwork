@@ -25,7 +25,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide/", activeMatch: "/guide/" },
       { text: "Algorithms", link: "/algorithms/", activeMatch: "/algorithms/" },
       { text: "Reference", link: "/reference/contracts", activeMatch: "/reference/" },
-      { text: "Open app", link: process.env.DOCS_APP_URL || "http://localhost:3000" },
+      { text: "Open app", link: process.env.DOCS_APP_URL || "https://mochi.meme" },
     ],
 
     sidebar: {

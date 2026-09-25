@@ -3,6 +3,10 @@
 The social app, indexer, and handbook run independently. Configure your own hosts;
 no cloud account, DNS zone, or production server is required to build the repo.
 
+The hosted app uses **https://mochi.meme**, the handbook uses
+**https://docs.mochi.meme**, and the indexer uses **https://api.mochi.meme**.
+Production pins `NEXT_PUBLIC_RP_ID=mochi.meme` to preserve passkeys on the apex and `www`.
+
 ## Requirements
 
 - Node.js 24 and pnpm 10.
@@ -91,9 +95,11 @@ cp .env.example .env
 npm run dev
 ```
 
-The repository does not include automatic production deployment workflows. Run the
-indexer under your chosen process manager, persist its database, and expose its
-HTTP API over HTTPS. Check `GET /health` after startup.
+The production app and handbook deploy through GitHub Actions. The app runs as
+a standalone Node.js service behind a Cloudflare Tunnel; the handbook is a
+Cloudflare Pages project. Configure the repository secrets described in
+`infra/README.md` for your own deployment. The indexer runs separately with
+persistent SQLite storage. Check `GET /health` after startup.
 
 Optional services:
 

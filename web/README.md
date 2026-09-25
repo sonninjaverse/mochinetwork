@@ -1,6 +1,7 @@
 # Mochi Network web
 
-Next.js social app and a separate VitePress handbook. The app includes communities,
+Next.js social app at [mochi.meme](https://mochi.meme) and a separate VitePress
+handbook at [docs.mochi.meme](https://docs.mochi.meme). The app includes communities,
 posts, replies, karma-weighted voting, user-selectable feed algorithms, passkey
 accounts, notifications, and local bookmarks.
 
@@ -50,6 +51,7 @@ private environment files. `pnpm start` can also serve a normal local build.
 ## Configuration
 
 `.env.example` documents the supported settings. `.env.production` contains only
-public testnet values and localhost defaults. `NEXT_PUBLIC_*` values are baked into
+public testnet values and the production domains. `.env.example` keeps localhost
+defaults for local development. `NEXT_PUBLIC_*` values are baked into
 the browser bundle, so rebuild after changing them. Set deployment URLs explicitly
 and keep WebAuthn's relying party stable for existing passkeys.

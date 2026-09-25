@@ -1,6 +1,6 @@
 # Indexer API
 
-Base URL: `http://localhost:8787`
+Production base URL: `https://api.mochi.meme`. Local development: `http://localhost:8787`.
 
 The indexer returns **candidate lists** and **content**. It does not rank: every
 score is an `eth_call` to the contracts. See

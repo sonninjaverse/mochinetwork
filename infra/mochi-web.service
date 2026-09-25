@@ -1,0 +1,63 @@
+# Mochi web app (mochi.meme).
+#
+# The Next standalone server, built in CI and shipped as a release directory by
+# infra/deploy-app.sh. /opt/mochi/web/current is a symlink to one release under
+# /opt/mochi/web/releases, so a rollback is repointing it and restarting.
+#
+# It listens on 127.0.0.1 only. The Cloudflare tunnel that already serves
+# api.mochi.meme connects outbound and forwards mochi.meme and www.mochi.meme
+# here, passing the visitor's Host and X-Forwarded-Proto: https, which
+# middleware reads to build the gate redirect and the CSP. Nothing on this box
+# listens publicly for it.
+#
+# The same Node 22 as the indexer, from /opt/mochi/node rather than the system
+# Node 20 the other services on this host use.
+#
+# The optional GATE_SECRET is in the environment file, outside releases. NEXT_PUBLIC_* values are baked into the build, not read from here.
+
+[Unit]
+Description=Mochi web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mochiweb
+Group=mochiweb
+WorkingDirectory=/opt/mochi/web/current
+EnvironmentFile=/opt/mochi/web/.env
+Environment=NODE_ENV=production PATH=/opt/mochi/node/bin:/usr/local/bin:/usr/bin:/bin
+# The bind is set here, not in Environment=: EnvironmentFile= overrides
+# Environment=, so a HOSTNAME=0.0.0.0 or PORT= line in .env would move the
+# server off loopback. env(1) sets them last, over whatever systemd passed.
+ExecStart=/usr/bin/env HOSTNAME=127.0.0.1 PORT=3100 /opt/mochi/node/bin/node server.js
+Restart=always
+RestartSec=3
+
+# Its own user, so it holds none of the deploy user's or the indexer's rights.
+NoNewPrivileges=yes
+# No capabilities at all: it binds an unprivileged port and needs nothing else.
+CapabilityBoundingSet=
+PrivateTmp=yes
+PrivateDevices=yes
+# Other users' processes, and their environments, are not visible in /proc.
+ProtectProc=invisible
+ProtectSystem=strict
+ProtectHome=yes
+# Next writes its render cache under .next/cache in the running release;
+# deploy-app.sh hands that directory to mochiweb. Nothing else is writable.
+ReadWritePaths=/opt/mochi/web/releases
+# The indexer's .env holds private keys (the faucet key among them). A
+# compromised web process must not be able to read them, so the whole indexer
+# tree is invisible to it, not merely unwritable.
+InaccessiblePaths=/opt/mochi/indexer
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+# The render cache it writes is readable by mochiweb alone.
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

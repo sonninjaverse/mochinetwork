@@ -1,0 +1,83 @@
+# Publishes the handbook to Cloudflare Pages.
+#
+# The Pages project is a direct-upload one: Cloudflare's Git integration needs
+# the Pages GitHub app on the repository, which this repo does not have, so the
+# build happens here and the output is uploaded with wrangler instead. The token
+# is a Cloudflare API token with "Cloudflare Pages: Edit", stored as a secret.
+#
+# The deploy step is skipped when the secret is absent so a fork or a fresh
+# clone still gets a green build.
+name: Deploy docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/docs/**"
+      - "web/package.json"
+      - "web/pnpm-lock.yaml"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Referenced from a step `if` through env, because the secrets context is
+      # not available to `if` expressions directly.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - run: pnpm docs:build
+        working-directory: web
+        env:
+          DOCS_APP_URL: https://mochi.meme
+
+      - name: Publish to Cloudflare Pages
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web
+          # web/ no longer depends on wrangler (the app left Workers), so the
+          # action installs one itself; pinned rather than its default.
+          wranglerVersion: "4.131.1"
+          command: pages deploy docs/.vitepress/dist --project-name mochi-handbook --branch main
+
+      - name: Check the handbook is live
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 20); do
+            if curl -sf https://docs.mochi.meme/ -o /tmp/docs.html \
+              && grep -q '/assets/' /tmp/docs.html; then
+              echo "handbook live"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "docs.mochi.meme is not serving the handbook" >&2
+          exit 1

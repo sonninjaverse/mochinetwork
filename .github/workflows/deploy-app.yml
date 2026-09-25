@@ -1,0 +1,98 @@
+# Builds the social app and ships it to the VPS on every push to main that
+# touches it.
+#
+# The runner builds; the VPS only receives the result. `pnpm build` then
+# `pnpm release` produce web/release/, a Next standalone server with its
+# static files, and infra/deploy-app.sh rsyncs it to
+# /opt/mochi/web/releases/<commit>, points /opt/mochi/web/current at it and
+# restarts mochi-web. That script is the same one a person runs by hand, and its
+# own health check is the gate: /gate must answer through the tunnel's headers
+# with a nonce CSP within a minute, or the script puts the previous release back
+# and this job fails. Every run ships a new release directory, even for a
+# commit that is already live.
+#
+# Node 22 matches the VPS runtime (/opt/mochi/node). The SSH deploy key is stored in repository secrets.
+name: Deploy app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      # The handbook is its own site (deploy-docs.yml), not part of the app.
+      - "!web/docs/**"
+      # bundle-sources.mjs copies these into the build.
+      - "contracts/src/algorithms/**"
+      - "infra/deploy-app.sh"
+      - "infra/mochi-web.service"
+      - ".github/workflows/deploy-app.yml"
+  workflow_dispatch:
+
+# Never two deploys at once, and never cancel one halfway: a killed run can
+# leave current switched to a release nobody checked.
+concurrency:
+  group: deploy-app
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # A build takes a few minutes and the health check gives up after one; a
+    # run past this is stuck on the network, not working.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - run: pnpm test
+        working-directory: web
+
+      - run: pnpm build
+        working-directory: web
+
+      - run: pnpm release
+        working-directory: web
+
+      - name: Set up the deploy key
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          cat >> ~/.ssh/config <<EOF
+          Host mochi-vps
+            HostName ${VPS_HOST}
+            User ${VPS_USER}
+            Port ${VPS_PORT}
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      # The same script a person runs. APP_HOST points at the alias above so
+      # the script's own rsync and ssh calls use the key without changes.
+      - name: Deploy
+        env:
+          APP_HOST: mochi-vps
+        run: bash infra/deploy-app.sh

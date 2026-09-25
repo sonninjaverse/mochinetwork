@@ -7,8 +7,8 @@
 | Chain id | `10143` (Monad testnet) |
 | RPC | `https://testnet-rpc.monad.xyz` |
 | Explorer | [testnet.monadscan.com](https://testnet.monadscan.com) |
-| Local app | `http://localhost:3000` |
-| Local API | `http://localhost:8787` |
+| App | [mochi.meme](https://mochi.meme) |
+| API | `https://api.mochi.meme` |
 
 ## Open the app
 

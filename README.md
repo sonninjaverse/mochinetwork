@@ -8,6 +8,8 @@ chain. The browser asks an indexer for candidate posts, then calls a ranking
 contract with `eth_call`. Reading and switching a feed needs no transaction;
 posting and voting use a passkey wallet and testnet MON.
 
+**Live app:** [mochi.meme](https://mochi.meme) · **Docs:** [docs.mochi.meme](https://docs.mochi.meme)
+
 ## What to try
 
 1. Open Home or Popular and switch between Hot, Best, New, and Controversial.
@@ -111,10 +113,13 @@ Anvil accounts are separate; the suite's burner wallet is for disposable funds.
 The app and handbook can run on hosts of your choice. Configure
 `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DOCS_URL`, and `NEXT_PUBLIC_INDEXER_URL` before
 building the app. Set `WEB_ORIGINS` on the indexer and `DOCS_APP_URL` when building
-the handbook. There are no automatic production deployment workflows.
+the handbook. Production defaults target `mochi.meme`, `docs.mochi.meme`, and
+`api.mochi.meme`. GitHub Actions deploy the app and handbook on changes to `main`;
+see [hosting](infra/README.md) for the service layout and rollback procedure.
 
 Passkeys are scoped to a relying party. `NEXT_PUBLIC_RP_ID` defaults to the current
-hostname; set a stable parent host when sharing accounts across subdomains.
+hostname for custom deployments. Production pins it to `mochi.meme` so the apex
+and `www` share existing accounts.
 Keep the relying party unchanged for existing accounts.
 
 See the [deployment guide](web/docs/reference/deploy.md),
