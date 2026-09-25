@@ -1,0 +1,47 @@
+# Secrets. Never commit these.
+.env
+.env.*
+!.env.example
+# Public build values only — every name in it is NEXT_PUBLIC_, so it is already
+# in the bundle. CI has no .env.local to read, and this is what it builds from.
+!web/.env.production
+*.key
+*.pem
+
+# Build output
+node_modules/
+.next/
+dist/
+out/
+cache/
+broadcast/
+
+# Local database
+*.db
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+spike/
+next-env.d.ts
+.next/
+faucet.key
+
+# Test and build artefacts. Playwright writes a trace and an error context per
+# failed run; committing them buries the diff in noise.
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Isolated worktrees for plan execution
+.worktrees/
+.superpowers/
+
+# Local tooling and runtime data
+.wrangler/
+*.log
+*.sqlite
+*.sqlite3
+coverage/
+.pnpm-store/

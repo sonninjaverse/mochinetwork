@@ -1,0 +1,52 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/bundle-sources.mjs && next dev --turbopack",
+    "build": "node scripts/bundle-sources.mjs && next build --turbopack",
+    "start": "next start",
+    "release": "node scripts/assemble-release.mjs",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --config=playwright.social.config.ts",
+    "test:e2e:social": "playwright test --config=playwright.social.config.ts",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs --port 5174"
+  },
+  "dependencies": {
+    "@category-labs/mera": "0.2.0",
+    "@scure/bip32": "^1.7.0",
+    "@scure/bip39": "^1.6.0",
+    "next": "15.5.24",
+    "qrcode.react": "^4.2.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "viem": "2.46.3"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^24.13.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.24",
+    "jsdom": "^30.0.1",
+    "playwright": "^1.63.0",
+    "typescript": "^5",
+    "vite": "^8.3.0",
+    "vitepress": "^1.6.4",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

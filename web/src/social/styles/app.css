@@ -1,0 +1,2380 @@
+/* Mochi Network components.
+   Every value comes from a token; nothing here hardcodes a colour. */
+
+/* ---------------------------------------------------------------- shell */
+
+.shell {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 0 0 96px;
+}
+
+/* Rails down both sides, so the column reads as a column rather than as text
+   adrift on a page. Only once there is a page to be adrift on: below this the
+   column is the whole screen, and a line hard against the bezel reads as a
+   rendering fault.
+
+   The viewport height goes with them — a short page, an empty profile or a
+   single post, otherwise stopped its own edges halfway down the screen, which
+   looks worse than having no edges. Scoped here too, so a short page on a
+   phone does not gain a screenful of nothing to scroll. */
+@media (min-width: 661px) {
+  .shell {
+    min-height: 100vh;
+    border-left: 1px solid var(--divider);
+    border-right: 1px solid var(--divider);
+  }
+}
+
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  /* Clear the notch/status bar with viewport-fit=cover; its own glass fills
+     the area behind it. */
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
+  background: var(--glass-fill);
+  border-bottom: 1px solid var(--divider);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.wordmark em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.wordmark img {
+  display: block;
+}
+
+.masthead-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The controls here wear .tab, which is sized for a tab strip. */
+.masthead-actions .tab {
+  padding: 7px 9px;
+  border-radius: 8px;
+}
+
+/* ---------------------------------------------------------------- tabs */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.tab {
+  position: relative;
+  padding: 10px 14px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 10px 10px 0 0;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab[aria-current="page"] {
+  color: var(--accent);
+}
+
+.tab[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 12px -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* Pushed to the end of the row: it leaves the site, so it should not read as
+   a third page you are one click from being on. */
+.tabs-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------- sidebar */
+
+.sidebar { display: none; }
+
+.layout-main { min-width: 0; }
+
+@media (min-width: 960px) {
+  /* 620px was right for a single-column feed. With a rail beside it the page
+     has to be wide enough to hold both without either one being squeezed. */
+  .shell { max-width: 1060px; }
+
+  /* The four tabs move into the rail, the way Reddit's do, so the bar that
+     held them goes away rather than standing empty. */
+  .tabs { display: none; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 26px;
+  }
+
+  .sidebar {
+    display: block;
+    position: sticky;
+    top: 78px;
+    align-self: start;
+  }
+}
+
+.sidebar-nav { display: grid; gap: 2px; }
+.sidebar-link { display: block; padding: 7px 10px; border-radius: 8px; font-size: 14px; color: var(--text-muted); text-decoration: none; }
+.sidebar-link:hover { background: var(--accent-soft); color: var(--text-primary); }
+.sidebar-link[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* ---------------------------------------------------------- bottom nav */
+
+/* Pinch-zoom and double-tap zoom off. Panning stays, so the page still
+   scrolls; only the magnifying gestures are dropped. */
+html, body { touch-action: pan-x pan-y; }
+
+/* iOS zooms a form field on focus when its text is under 16px. Sixteen is the
+   floor, not a size choice. */
+@media (max-width: 720px) {
+  input, textarea, select { font-size: 16px; }
+}
+
+.bottom-nav { display: none; }
+
+@media (max-width: 720px) {
+  /* The destinations sit at the bottom, where a thumb is, instead of in the
+     header where they wrapped to three rows and pushed the feed down. */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    /* Above the Home indicator, plus a little air so it does not sit on the
+       very edge of the screen. */
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+    background: var(--glass-fill);
+    border-top: 1px solid var(--divider);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(20px) saturate(150%);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 56px;
+    font-size: 10.5px;
+    color: var(--text-subtle);
+    text-decoration: none;
+  }
+
+  .bottom-nav-item[aria-current="page"] { color: var(--accent); }
+
+  /* Room for the bar, on every page, including its safe-area padding. */
+  .shell { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px) + 6px); }
+
+  /* One row at the top: labels that will not fit come off rather than wrap.
+     The wordmark drops to its mark so both account buttons still fit — Sign
+     in has to stay, or a returning reader has no door. */
+  .masthead { flex-wrap: nowrap; gap: 8px; padding: 10px 12px; }
+  .masthead-actions { flex-wrap: nowrap; gap: 4px; }
+  .wordmark span { display: none; }
+  .tab-label { display: none; }
+  .masthead-actions .tab-docs { display: none; }
+  .masthead-actions .btn { padding: 8px 11px; font-size: 13px; }
+}
+
+.tab-docs,
+.tab-faucet,
+.tab-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tab-docs svg,
+.tab-faucet svg,
+.tab-search svg {
+  opacity: 0.8;
+}
+
+.tab-faucet:disabled,
+.tab-faucet.is-spent,
+/* The faucet also renders as a plain button on your own profile. */
+.btn.is-spent {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.tab-blurb {
+  padding: 14px 20px 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* The sort on the left, Create post on the right, one divider under both. */
+.feed-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 20px 12px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.feed-tools .control { border-bottom: 0; }
+.feed-tools .control-trigger { margin: 0; }
+.feed-tools .create-post { margin: 0; }
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--btn-glow);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  border: 1px solid var(--divider);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-mid);
+}
+
+.btn-sm {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass-fill);
+  color: var(--text-muted);
+  box-shadow: var(--glass-highlight);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.icon-btn:hover {
+  color: var(--accent);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* ---------------------------------------------------------------- account */
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-note {
+  max-width: 260px;
+  font-size: 12px;
+  color: var(--danger);
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------- composer */
+
+.composer {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--divider);
+  background: var(--bg-white);
+}
+
+/* Beside an avatar, in the same column the posts above and below use, so a
+   reply lines up with the conversation it joins. */
+.composer.has-avatar {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.composer.has-avatar.is-folded {
+  align-items: center;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.composer-main {
+  min-width: 0;
+}
+
+/* The tag, fixed. A label on the post rather than text to edit. */
+.composer-community {
+  display: inline-block;
+  margin: 2px 0 8px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+
+
+.composer-invite {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-subtle);
+  font-family: inherit;
+  font-size: 15px;
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.composer-invite:hover {
+  border-color: var(--accent-mid);
+  color: var(--text-muted);
+}
+
+.composer textarea {
+  width: 100%;
+  /* One line. The box grows from here as it is typed into, so a minimum of
+     74px was only ever a minimum amount of emptiness. */
+  min-height: 28px;
+  font-family: inherit;
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 17px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.composer textarea::placeholder {
+  color: var(--text-subtle);
+}
+
+.composer-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.counter {
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.counter.is-low {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- avatar */
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--divider);
+}
+
+/* Nobody to draw, but the column still has to be held open. */
+.avatar.is-blank {
+  width: 40px;
+  height: 40px;
+  background: var(--divider);
+}
+
+.avatar img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+}
+
+/* ---------------------------------------------------------------- posts */
+
+.post {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider);
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.post-main {
+  min-width: 0;
+}
+
+/* The whole row opens the post. Not a link element, because the row already
+   contains links and buttons and nesting them would break both. */
+.post.is-openable {
+  cursor: pointer;
+}
+
+.post:hover {
+  background: var(--bg-white);
+}
+
+.post.is-pending {
+  background: var(--accent-soft);
+}
+
+.post-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.post-head .sep {
+  color: var(--text-subtle);
+  opacity: 0.5;
+}
+
+.post-author {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.post-author::before {
+  content: "@";
+  opacity: 0.45;
+  font-weight: 500;
+}
+
+.post-author.is-anon::before {
+  content: none;
+}
+
+.post-author.is-anon {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.post-hint {
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.post-time {
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+.post-karma {
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.community-browse { padding: 12px 20px; font-size: 13px; color: var(--text-muted); }
+.community-header { padding: 22px 20px; border-bottom: 1px solid var(--divider); }
+/* The whole card is the target in the directory, not just its name. */
+.community-header.is-openable {
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.community-header.is-openable:hover { background: var(--accent-soft); }
+.community-heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* The per-community notification level, in its own row below the header so it
+   does not push Join/Leave around. */
+.sub-notify { display: inline-flex; align-items: center; gap: 6px; color: var(--text-subtle); }
+.community-bell { display: flex; justify-content: flex-end; padding: 8px 20px; border-bottom: 1px solid var(--divider); }
+.community-heading h1, .community-heading h2 { margin: 0; overflow-wrap: anywhere; }
+.community-heading h1 { font-size: 26px; }
+.community-heading h2 { font-size: 18px; }
+.community-heading .follow-wrap { margin-left: auto; }
+.community-icon { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; }
+.community-description { margin-top: 10px; color: var(--text-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.community-counts { margin-top: 8px; font-size: 12px; color: var(--text-subtle); }
+.community-chip { display: inline-block; margin-top: 7px; padding: 2px 8px; border-radius: 8px; background: var(--accent-soft); color: var(--text-muted); font-size: 12px; }
+.community-directory-intro { padding: 22px 20px 16px; }
+.community-directory-intro h1 { font-size: 26px; margin-bottom: 8px; }
+.community-directory-intro p, .community-signin p { color: var(--text-muted); font-size: 14px; }
+.community-signin { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px 20px; }
+.community-create { padding: 16px 20px; border-bottom: 1px solid var(--divider); }
+.community-create form { display: grid; gap: 12px; margin-top: 16px; }
+.community-create label, .community-search { display: grid; gap: 6px; font-size: 13px; }
+.community-search { margin-top: 18px; }
+.community-create input, .community-create textarea, .community-search input, .sub-picker input {
+  width: 100%; min-width: 0; border: 1px solid var(--divider); border-radius: 8px;
+  padding: 9px 10px; background: var(--bg-white); color: var(--text-primary); font: inherit;
+}
+.community-create textarea { min-height: 80px; resize: vertical; }
+.community-create small { color: var(--text-subtle); }
+.community-create button { justify-self: start; }
+.community-banner { height: 88px; margin-top: 4px; border-radius: 14px; background: linear-gradient(120deg, var(--accent-soft), var(--accent-mid) 55%, var(--accent-soft)); }
+.community-tabs, .account-tabs { display: flex; gap: 4px; padding: 6px 20px 0; border-bottom: 1px solid var(--divider); }
+.community-tabs button, .account-tabs button { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--text-muted); padding: 8px 12px; cursor: pointer; border-bottom: 2px solid transparent; }
+.community-tabs button.is-on, .account-tabs button.is-on { color: var(--accent); border-bottom-color: var(--accent); }
+.community-about { padding: 20px; }
+.community-about h2 { font-size: 16px; margin-bottom: 10px; }
+.community-about-stats { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 16px; }
+.community-about-stats dt { font-size: 12px; color: var(--text-subtle); }
+.community-about-stats dd { font-size: 18px; margin-top: 2px; }
+.sub-picker { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--text-subtle); }
+.sub-picker input { max-width: 280px; padding: 5px 8px; }
+@media (max-width: 480px) {
+  .masthead { flex-wrap: wrap; gap: 10px; padding: 12px 16px; }
+  .masthead-actions { margin-left: auto; }
+  .tabs { flex-wrap: wrap; padding-left: 8px; padding-right: 8px; gap: 0; }
+  .tab { padding-left: 10px; padding-right: 10px; }
+  .tabs-end { gap: 0; }
+  .community-heading h1 { font-size: 22px; }
+  .sub-picker { align-items: flex-start; flex-direction: column; }
+  .sub-picker input { max-width: none; }
+}
+
+.gate-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 32px 20px;
+  /* A warm glow at the top, so the card sits on a page rather than in a void. */
+  background: radial-gradient(120% 55% at 50% 0%, var(--accent-soft) 0%, transparent 70%);
+}
+
+.gate-card {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 400px;
+  padding: 38px 32px 32px;
+  border: 1px solid var(--divider);
+  border-radius: 26px;
+  background: var(--bg-white);
+  box-shadow: 0 24px 60px rgb(20 10 15 / 14%);
+}
+
+.gate-mark { display: block; width: 60px; height: 60px; margin-bottom: 10px; }
+
+.gate-card h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.gate-lead {
+  margin: 0;
+  max-width: 32ch;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.gate-field {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 24px;
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.gate-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--divider);
+  border-radius: 14px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.gate-field input::placeholder { color: var(--text-subtle); opacity: 0.7; }
+
+.gate-field input:focus {
+  outline: none;
+  border-color: var(--field-focus-border);
+  box-shadow: var(--field-focus-glow);
+}
+
+.gate-submit {
+  justify-self: stretch;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.gate-error {
+  width: 100%;
+  margin-top: 10px;
+  text-align: left;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.post-body {
+  margin-top: 4px;
+  font-size: 16px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.post-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  margin-left: -10px;
+}
+
+.load-sentinel {
+  height: 1px;
+}
+
+/* Holds the scroll position steady for the moment before a skeleton is
+   allowed to appear, so the page does not jump when one does. */
+.feed-quiet {
+  min-height: 60vh;
+}
+
+/* ---------------------------------------------------------------- skeleton */
+
+.post.post-skeleton {
+  pointer-events: none;
+}
+
+.skeleton-avatar,
+.skeleton-line {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--divider) 25%,
+    var(--accent-soft) 37%,
+    var(--divider) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-line {
+  height: 11px;
+  margin-bottom: 9px;
+}
+
+.skeleton-line.is-head {
+  width: 34%;
+  height: 12px;
+  margin-bottom: 14px;
+}
+
+.skeleton-line.is-short {
+  width: 62%;
+  margin-bottom: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+.feed-end {
+  padding: 28px 20px 48px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+.feed-end a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.post-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-style: italic;
+}
+
+.act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 13px;
+  /* Reply is a link and its neighbours are buttons. Without this it is the
+     only control in the row wearing an underline. */
+  text-decoration: none;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.act:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.act:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/**
+ * A cast vote has to be obvious at a glance, and colour alone was not doing
+ * it: in dark mode the accent and the muted grey sit at nearly the same
+ * lightness, so a 2.2px arrow changed hue and little else.
+ *
+ * Three signals now, not one — a tinted pill, a heavier stroke, and the
+ * accent. Any of them reads on its own.
+ */
+/* No label, so the padding that made room for one would leave it looking
+   like a gap in the row. */
+.act-icon {
+  padding: 0 8px;
+}
+
+/* Wide enough for the word, so a post with replies and a post without put
+   everything after them in the same place. Counts are tabular for the same
+   reason: 11 and 44 are not different widths. */
+.act-reply {
+  min-width: 80px;
+  justify-content: flex-start;
+  font-variant-numeric: tabular-nums;
+}
+
+.act.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 500;
+}
+
+.act.is-on svg {
+  stroke-width: 3.4;
+}
+
+.votes {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.act.is-down:hover:not(:disabled) {
+  background: var(--sell);
+  color: var(--text-primary);
+}
+
+.vote-count {
+  min-width: 22px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+/* The number is the largest thing in the row, so it carries the state too. */
+.vote-count.is-voted {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- control */
+
+.control {
+  border-bottom: 1px solid var(--divider);
+}
+
+.control-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 20px 12px;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.control-trigger:hover,
+.control.is-open .control-trigger {
+  border-color: var(--accent-mid);
+  color: var(--accent);
+}
+
+.control-chevron {
+  opacity: 0.5;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.control.is-open .control-chevron {
+  transform: rotate(180deg);
+}
+
+.control-panel {
+  padding: 4px 20px 20px;
+  background: var(--panel-blue);
+  border-top: 1px solid var(--divider);
+  animation: panel var(--duration-normal) var(--ease-out);
+}
+
+@keyframes panel {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.control-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.control-section:last-of-type {
+  border-bottom: 0;
+}
+
+.control-section h3 {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.control-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-subtle);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--bg-white);
+  color: var(--text-muted);
+  font-size: 13px;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.chip:hover {
+  border-color: var(--accent-mid);
+  color: var(--accent);
+}
+
+.chip.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.algo-list {
+  display: grid;
+  gap: 6px;
+}
+
+.algo {
+  padding: 9px 13px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--bg-white);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.algo:hover {
+  border-color: var(--accent-mid);
+}
+
+.algo.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* The description of the one in use, so the list itself stays scannable. */
+.algo-current {
+  padding: 8px 2px 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* Says which source the posts came from when it is not the one the tab is
+   named for. Quiet, but never hidden. */
+.feed-note {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--bg-white);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* Beside the name rather than in the footer: following is a decision about
+   the person, not about the post you happen to be reading. */
+/* Sits at the end of the row on somebody's profile, where the owner's own
+   buttons sit on theirs. */
+.follow-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.follow-error {
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+  color: var(--accent);
+}
+
+.follow-inline {
+  margin-left: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--divider);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.follow-inline:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.follow-inline:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* --------------------------------------------------------------- media */
+
+.post-media {
+  display: block;
+  margin-top: 10px;
+  max-width: 100%;
+  max-height: 480px;
+  border-radius: 14px;
+  border: 1px solid var(--divider);
+  object-fit: cover;
+}
+
+.composer-media {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.composer-media img {
+  max-width: 200px;
+  max-height: 160px;
+  border-radius: 12px;
+  border: 1px solid var(--divider);
+  object-fit: cover;
+}
+
+/* Pushes the counter and Post button to the right of the image control. */
+.composer-foot .counter,
+.composer-foot .btn {
+  margin-left: auto;
+}
+
+.composer-foot .counter + .btn {
+  margin-left: 0;
+}
+
+/* ------------------------------------------------------- notifications */
+
+.bell-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.tab-bell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tab-bell svg {
+  opacity: 0.8;
+}
+
+.tab-bell.has-unread svg {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.bell-count {
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.bell-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--divider);
+  border-radius: 16px;
+  background: var(--bg-white);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 14%);
+}
+
+.bell-empty {
+  padding: 22px 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.bell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.bell-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+.bell-gear {
+  display: inline-flex;
+  padding: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.bell-gear:hover { background: var(--accent-soft); color: var(--accent); }
+
+.bell-settings { padding: 4px 14px 14px; }
+
+.bell-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-subtle);
+}
+
+.bell-note.is-error { color: var(--danger); }
+
+.bell-group { margin-top: 12px; }
+
+.bell-group h4 {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.bell-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.bell-label { font-size: 13px; color: var(--text-primary); }
+
+/* A row of mutually exclusive choices, small enough for the panel. */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.seg button {
+  padding: 5px 10px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.seg button.is-on { background: var(--accent); color: var(--accent-contrast); }
+
+.bell-item {
+  display: block;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--divider);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.bell-item:last-child {
+  border-bottom: 0;
+}
+
+.bell-item:hover {
+  background: var(--accent-soft);
+}
+
+/* A tint rather than a dot: the whole row is the thing that is new. */
+.bell-item.is-new {
+  background: var(--accent-soft);
+}
+
+.bell-who {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bell-text {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bell-when {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+/* -------------------------------------------------------------- thread */
+
+/* The post being answered, shown above its reply and joined to it by a line,
+   so a reply opened on its own page still says what it is about. */
+.thread-parent {
+  position: relative;
+}
+
+.thread-parent .post {
+  border-bottom: 0;
+  padding-bottom: 6px;
+}
+
+.thread-parent::after {
+  content: "";
+  position: absolute;
+  left: 39px;
+  bottom: -2px;
+  width: 2px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--divider);
+}
+
+.thread-child {
+  padding-top: 16px;
+}
+
+.thread-label {
+  padding: 0 20px 2px 72px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/* ------------------------------------------------------------- replies */
+
+/* The post the page is about, set a size above the replies to it. */
+.thread-root .post-body {
+  font-size: 19px;
+  line-height: 1.5;
+}
+
+.thread-root .post {
+  border-bottom: 0;
+}
+
+.thread-root .post:hover {
+  background: none;
+}
+
+/* --------------------------------------------------------- comment tree */
+
+.comments {
+  padding: 4px 0 16px;
+}
+
+.comments-sort {
+  display: flex;
+  gap: 4px;
+  padding: 6px 20px 8px;
+}
+
+.comments-sort button {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-subtle);
+  padding: 3px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.comments-sort button.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.comment {
+  position: relative;
+  padding-left: 18px;
+}
+
+.comment-toggle {
+  position: absolute;
+  left: 2px;
+  top: 14px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.comment-toggle:hover {
+  color: var(--text-primary);
+}
+
+/* The spine a thread runs down. It belongs to the branch, so every reply at
+   this level hangs off one line instead of stepping right each time. */
+.comment-branch {
+  border-left: 2px solid var(--divider);
+  padding-left: 10px;
+}
+
+.comment .post {
+  border-bottom: 0;
+  padding-top: 6px;
+  padding-bottom: 10px;
+}
+
+.comment.is-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.comment-collapsed {
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+.comment-reply {
+  padding: 2px 0 10px;
+}
+
+.profile-cake {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+/* An invitation where a feed would be, for a tab that needs an account. */
+.feed-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 44px 24px 56px;
+  text-align: center;
+}
+
+.feed-gate h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.feed-gate p {
+  max-width: 420px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.feed-gate a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.feed-gate .account {
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------- search */
+
+/* Sits high rather than centred: the list grows downward, and a box that
+   re-centres itself every keystroke is a box that will not hold still. */
+.modal-backdrop.is-palette {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.modal.is-palette {
+  width: min(520px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.palette-input {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-subtle);
+}
+
+.palette-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.palette-input input::placeholder {
+  color: var(--text-subtle);
+}
+
+.palette-input input:focus {
+  outline: none;
+}
+
+.palette-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--accent-mid);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: palette-spin 700ms linear infinite;
+}
+
+@keyframes palette-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palette-spinner { animation-duration: 2s; }
+}
+
+.palette-results {
+  max-height: 44vh;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.palette-hit {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* One highlight for hover and for the keyboard, so the two never disagree
+   about which row Enter would take. */
+.palette-hit.is-active {
+  background: var(--accent-soft);
+}
+
+.palette-who {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.palette-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.palette-hit.is-active .palette-name {
+  color: var(--accent);
+}
+
+.palette-meta {
+  font-size: 12px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-empty {
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.palette-foot {
+  display: flex;
+  gap: 16px;
+  padding: 9px 18px;
+  border-top: 1px solid var(--divider);
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+.palette-foot kbd {
+  display: inline-block;
+  min-width: 17px;
+  margin-right: 3px;
+  padding: 1px 4px;
+  border: 1px solid var(--divider);
+  border-radius: 5px;
+  background: var(--bg-page);
+  font-family: inherit;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- modal */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(20 10 15 / 52%);
+  backdrop-filter: blur(3px);
+  animation: modal-fade var(--duration-normal) var(--ease-out);
+}
+
+.modal {
+  width: min(420px, 100%);
+  padding: 22px 24px 20px;
+  border: 1px solid var(--divider);
+  border-radius: 20px;
+  background: var(--bg-white);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 24%);
+  animation: modal-rise var(--duration-normal) var(--ease-out);
+}
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+}
+
+@keyframes modal-rise {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+}
+
+/* Honours a reader who has asked the system for less movement. */
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal {
+    animation: none;
+  }
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modal-head h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  display: inline-flex;
+  padding: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.modal-close:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* A consequence worth reading before it happens, not an error. */
+.modal-warn {
+  margin-bottom: 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--accent-mid);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.modal-lead {
+  margin-bottom: 16px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.modal-note {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.modal-note.is-error {
+  color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ------------------------------------------------------------ wallet */
+
+/* Always light, whatever the theme: a scanner needs the contrast. */
+.wallet-qr {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  margin: 4px 0 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-panel);
+  background: #fff;
+}
+
+.wallet-qr svg { display: block; }
+
+.wallet-hint {
+  margin-bottom: 12px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.wallet-address {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.wallet-address:hover {
+  border-color: var(--accent-mid);
+  background: var(--accent-soft);
+}
+
+.wallet-address code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+
+.wallet-copy {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.wallet-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.wallet-field > input,
+.wallet-amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--bg-page);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.wallet-field > input {
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.wallet-amount { padding: 0 8px 0 12px; }
+
+.wallet-amount input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.wallet-amount input:focus { outline: none; }
+
+.wallet-field > input:focus,
+.wallet-amount:focus-within {
+  border-color: var(--field-focus-border);
+  box-shadow: var(--field-focus-glow);
+}
+
+.wallet-max {
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wallet-max:disabled { opacity: 0.5; cursor: default; }
+
+.wallet-balance {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-tx {
+  display: block;
+  margin-bottom: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--accent);
+  word-break: break-all;
+}
+
+/* ------------------------------------------------------------ username */
+
+/* Built like the trust panel below it, because they are the same kind of
+   thing: a full-width statement about this account, on this account's page.
+   As a narrow white card floating between the name and the numbers it read
+   as something dropped onto the page rather than belonging to it — and on a
+   new account it is the only thing there is to do. */
+/* The claim form lives in a dialog now, so it is content rather than a panel:
+   no border, no fill, nothing that would nest inside the modal's own. */
+.handle-form {
+  display: grid;
+  gap: 10px;
+}
+
+/* The button that opens it, on your own page until the name is claimed. */
+.profile-claim {
+  margin-top: 16px;
+}
+
+/* Stretch rather than centre, so the button is exactly as tall as the field
+   instead of sitting in the middle of it. */
+.handle-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/**
+ * The @ lives inside the box.
+ *
+ * It is part of the name being typed, not a label standing beside it — outside
+ * the border it read as two separate things and the field looked half-width.
+ * The wrapper wears the border so the whole thing is one control, and clicking
+ * the @ focuses the input because the wrapper is a label.
+ */
+.handle-field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--bg-white);
+  cursor: text;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.handle-field:focus-within {
+  border-color: var(--accent);
+}
+
+.handle-field.is-disabled {
+  opacity: 0.55;
+}
+
+.handle-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.handle-field.is-large {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.handle-field.is-large input,
+.handle-field.is-large .handle-at {
+  font-size: 15.5px;
+}
+
+.handle-at {
+  font-weight: 600;
+  color: var(--text-subtle);
+}
+
+.handle-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.handle-note {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.handle-note.is-error {
+  color: var(--accent);
+}
+
+/* Holds the row height the algorithm buttons will take, so the panel does not
+   jump when the registry answers. */
+.algo-status {
+  padding: 10px 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.link-button {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.control-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.control-advanced {
+  padding-top: 16px;
+  border-top: 1px solid var(--divider);
+}
+
+.control-advanced summary {
+  font-size: 12px;
+  color: var(--text-subtle);
+  cursor: pointer;
+  list-style: none;
+}
+
+.control-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.control-advanced summary::before {
+  content: "+ ";
+  opacity: 0.6;
+}
+
+.control-advanced[open] summary::before {
+  content: "− ";
+}
+
+.picker-custom {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.field:focus {
+  border-color: var(--field-focus-border);
+  box-shadow: var(--field-focus-glow);
+}
+
+.source {
+  margin-top: 14px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 16px;
+  border-radius: var(--radius-panel);
+  background: var(--banner-bg);
+  color: var(--banner-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.source-missing {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow-wrap: break-word;
+}
+
+/* ---------------------------------------------------------------- sliders */
+
+.sliders {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-white);
+  border: 1px solid var(--divider);
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.slider-label {
+  width: 88px;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  appearance: none;
+  border-radius: 2px;
+  background: var(--accent-mid);
+  outline: none;
+}
+
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+
+.slider-row input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.slider-value {
+  width: 30px;
+  flex: none;
+  text-align: right;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- profile */
+
+.profile {
+  padding: 24px 20px;
+  border-bottom: 1px solid var(--divider);
+  background: var(--bg-white);
+}
+
+.profile-id {
+  margin-top: 14px;
+}
+
+.profile-id h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.profile-addr {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-subtle);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.profile-stats dt {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.profile-stats dd {
+  margin-top: 3px;
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The avatar and, on your own page, the buttons that act on the account —
+   one at each end of the row. */
+.profile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Reads as a reading, not as a button — the ones beside it are things you
+   press, and this is only a number. */
+.profile-balance {
+  padding-right: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trust {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--radius-panel);
+  background: var(--accent-soft);
+}
+
+.trust.is-unreached {
+  border-color: var(--divider);
+  background: var(--panel-blue);
+}
+
+.trust-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.trust-label {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trust-value {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.trust.is-unreached .trust-value {
+  color: var(--text-subtle);
+}
+
+.trust-bar {
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 3px;
+  background: var(--bg-white);
+  overflow: hidden;
+}
+
+.trust-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+.trust-desc {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.trust-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+
+.post-identity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.post-identity:hover .post-author {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- states */
+
+.state {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.pill-wrap {
+  position: sticky;
+  top: 72px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 0;
+  pointer-events: none;
+}
+
+.pill {
+  pointer-events: auto;
+  min-height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--float-shadow);
+}
+
+/* ---------------------------------------------------------------- pulse */
+
+.pulse {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--float-border);
+  border-radius: var(--radius-pill);
+  background: var(--float-bg);
+  box-shadow: var(--float-shadow);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live-dot);
+  opacity: 0.3;
+  transition: opacity 0.1s linear;
+}
+
+.pulse-dot.is-lit {
+  opacity: 1;
+}
+
+.pulse-block {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 520px) {
+  .pulse-net {
+    display: none;
+  }
+}
+
+/* After the .pulse rule above, or source order hands the pill back to the
+   phone and it sits right on top of the bottom bar, swallowing taps. */
+@media (max-width: 720px) {
+  .pulse {
+    display: none;
+  }
+}

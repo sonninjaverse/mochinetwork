@@ -1,0 +1,14 @@
+{
+  "name": "Mochi Network",
+  "short_name": "mochi",
+  "description": "A social network where the feed ranking algorithm is a public smart contract.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff9f2",
+  "theme_color": "#fff9f2",
+  "icons": [
+    { "src": "/brand/icons/mochi-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/icons/mochi-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/brand/mochi-mark.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

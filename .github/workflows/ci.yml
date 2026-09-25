@@ -1,0 +1,95 @@
+# Tests, on every push and every pull request.
+#
+# Each part of the repo is its own job so a failure names itself: "contracts"
+# red and "web" green says where to look without opening a log.
+name: CI
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # forge-std is a submodule, and forge cannot build without it.
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: forge test
+        working-directory: contracts
+        # foundry.toml declares this endpoint. Nothing in the suite forks, but
+        # an unset variable in the config is a needless way to fail.
+        env:
+          MONAD_TESTNET_RPC: https://testnet-rpc.monad.xyz
+        run: forge test -vv
+
+  indexer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: indexer/package-lock.json
+
+      - run: npm ci
+        working-directory: indexer
+
+      - run: npx tsc --noEmit
+        working-directory: indexer
+
+      - run: npm test
+        working-directory: indexer
+
+  # VitePress checks documentation links during the build.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm docs:build
+        working-directory: web
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm exec tsc --noEmit
+        working-directory: web
+      - run: pnpm test
+        working-directory: web
+      - run: pnpm build
+        working-directory: web
