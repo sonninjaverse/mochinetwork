@@ -114,7 +114,8 @@ The app and handbook can run on hosts of your choice. Configure
 `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DOCS_URL`, and `NEXT_PUBLIC_INDEXER_URL` before
 building the app. Set `WEB_ORIGINS` on the indexer and `DOCS_APP_URL` when building
 the handbook. Production defaults target `mochi.meme`, `docs.mochi.meme`, and
-`api.mochi.meme`. GitHub Actions deploy the app and handbook on changes to `main`;
+`api.mochi.meme`. GitHub Actions build changes to `main` and deploy when the
+required secrets are configured (Pages uses `CLOUDFLARE_PAGES_API_TOKEN`);
 see [hosting](infra/README.md) for the service layout and rollback procedure.
 
 Passkeys are scoped to a relying party. `NEXT_PUBLIC_RP_ID` defaults to the current

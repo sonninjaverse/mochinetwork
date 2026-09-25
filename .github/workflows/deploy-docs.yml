@@ -33,7 +33,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # Referenced from a step `if` through env, because the secrets context is
       # not available to `if` expressions directly.
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,11 +55,15 @@ jobs:
         env:
           DOCS_APP_URL: https://mochi.meme
 
+      - name: Explain missing publishing credentials
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::Docs built. Set CLOUDFLARE_PAGES_API_TOKEN with Pages Edit to enable publishing, or deploy manually as described in infra/README.md."
+
       - name: Publish to Cloudflare Pages
         if: env.CLOUDFLARE_API_TOKEN != ''
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
           # web/ no longer depends on wrangler (the app left Workers), so the

@@ -12,9 +12,12 @@ hosts. Domain and tunnel credentials stay outside this repository.
 
 ## App and docs
 
-GitHub Actions builds and deploys changes on `main`. Set repository secrets
+GitHub Actions builds changes on `main` and publishes when deployment secrets
+are configured. Set repository secrets
 `VPS_HOST`, `VPS_PORT`, `VPS_USER`, and `VPS_SSH_KEY` for the app, plus
-`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` for Pages. The SSH user needs
+`CLOUDFLARE_ACCOUNT_ID` and a `CLOUDFLARE_PAGES_API_TOKEN` with **Cloudflare
+Pages: Edit** for Pages. The docs workflow skips publishing if this dedicated
+token is absent; a Workers-only token cannot publish Pages. The SSH user needs
 permission to write releases, restart `mochi-web`, and assign the render cache
 to the service user. Configure the Pages custom domain separately.
 
@@ -33,6 +36,14 @@ The app uses `mochi-web.service`, `/opt/mochi/node/bin/node`, and
 `/opt/mochi/web/.env`. Releases live under `/opt/mochi/web/releases`; `current`
 selects the active release. A failed restart or health check restores the
 previous release. Old releases remain available for manual rollback.
+
+To publish docs manually using a Cloudflare login with Pages access:
+
+```bash
+pnpm --dir web docs:build
+cd web
+pnpm dlx wrangler@4.131.1 pages deploy docs/.vitepress/dist --project-name mochi-handbook --branch main
+```
 
 ## Indexer
 
