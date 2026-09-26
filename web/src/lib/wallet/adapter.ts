@@ -1,4 +1,4 @@
-import type { Abi, Address, Hash } from "viem";
+import type { Abi, Address, Hash, Hex } from "viem";
 
 export type WriteParams = {
   address: Address;
@@ -55,6 +55,9 @@ export interface WalletAdapter {
 
   /** Unlocks using a passkey that already exists. Never creates one. */
   signIn(): Promise<void>;
+
+  /** Proves account ownership without sending a transaction. Never creates a key. */
+  signMessage(message: string): Promise<Hex>;
 
   /** Drops the in-memory key and forgets the address. A deliberate sign-out. */
   lock(): void;

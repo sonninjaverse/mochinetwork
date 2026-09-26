@@ -35,6 +35,7 @@ export default defineConfig({
           items: [
             { text: "What is Mochi", link: "/guide/" },
             { text: "Enter the app and create a wallet", link: "/guide/getting-started" },
+            { text: "Invitations", link: "/guide/invites" },
           ],
         },
         {

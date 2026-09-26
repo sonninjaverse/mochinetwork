@@ -62,6 +62,9 @@ and RPC settings from `indexer/.env.example`. Preserve the existing database.
 
 If using the optional invite gate, use the same `GATE_SECRET` in app and indexer,
 `GATE_COOKIE_DOMAIN=mochi.meme`, and `GATE_WEB_ORIGIN=https://mochi.meme`.
+Deploy indexer changes before web changes. Keep the persistent `invite_*` tables:
+they hold the single-use codes and referrals. `GATE_CODES` seeds initial codes;
+run `npm run invites -- 3` on the indexer host for additional bootstrap invites.
 Keep private keys, upload credentials, tunnel credentials, and SSH keys outside
 Git. See the [deployment guide](../web/docs/reference/deploy.md) for local setup.
 

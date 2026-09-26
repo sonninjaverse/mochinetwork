@@ -24,7 +24,7 @@ let loadFails = false;
 function makeSession() {
   return {
     session: { end: vi.fn() },
-    account: { address: "0x00000000000000000000000000000000000000A1" },
+    account: { address: "0x00000000000000000000000000000000000000A1", signMessage: vi.fn(async () => "0xsigned") },
   };
 }
 
@@ -173,4 +173,14 @@ describe("mera adapter", () => {
     off();
     expect(seen).toEqual([true, false]);
   });
+});
+
+// Account proofs must not silently create a replacement identity.
+it("message signing restores an existing passkey and never creates one on failure", async () => {
+  loadFails = true;
+  created.mockClear();
+  await expect(createMeraAdapter().signMessage("proof")).rejects.toThrow("no passkey");
+  expect(created).not.toHaveBeenCalled();
+  loadFails = false;
+  await expect(createMeraAdapter().signMessage("proof")).resolves.toBe("0xsigned");
 });

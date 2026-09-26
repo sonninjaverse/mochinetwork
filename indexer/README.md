@@ -1,7 +1,8 @@
 # Mochi indexer
 
 Reads Monad testnet logs into SQLite and serves candidate sets and post content.
-It is a cache: deleting the database and restarting rebuilds it from the chain.
+Chain event tables can be rebuilt from logs. Invitations and browser sessions
+are local application data: preserve them in database backups.
 
 ## A dedicated RPC provider is required
 
@@ -15,8 +16,8 @@ Tenderly) and raise `LOG_CHUNK_SIZE` to match their limit.
 
 **Keep `mochi.db` alive.** Rebuilding from scratch gets more expensive every
 hour. A persistent database means each restart only has to catch up a few
-blocks. Rebuilding must stay *possible* — that is what makes this a cache
-rather than a source of truth — but it should not be routine.
+blocks. Chain history remains independently verifiable and rebuildable, but resetting
+the database would also lose invitation and session state.
 
 ## Environment
 
@@ -69,3 +70,16 @@ still influence which posts appear.
 Order matters. `npm run seed <step>` runs one step at a time
 (`seed/run.ts`); the steps are `fund`, `anchors`, `posts`, `likes`,
 `dislikes`, in that order.
+
+## Invitations
+
+With `GATE_SECRET` configured, the gate accepts single-use invitations. Each
+wallet admitted with a signed, expiring challenge gets three personal codes.
+Codes, referrals and hashed sessions persist in the same SQLite database.
+`GATE_CODES` seeds bootstrap invitations once; restarting never refreshes a code.
+
+Issue additional bootstrap invitations on the host with `npm run invites -- 3`.
+The command prints codes for private distribution; never commit the output.
+Back up `mochi.db` with SQLite's backup API before deployment and preserve all
+`invite_*` tables. Existing indexed participants are grandfathered once when
+invitations are first enabled. New on-chain activity cannot bypass admission.

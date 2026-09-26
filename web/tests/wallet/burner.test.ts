@@ -66,3 +66,13 @@ describe("remembering", () => {
     }
   });
 });
+
+it("signs account proofs with the active wallet and refuses to create a key for a proof", async () => {
+  const { verifyMessage } = await import("viem");
+  const w = createBurnerAdapter();
+  await expect(w.signMessage("Mochi account proof")).rejects.toThrow("Sign in");
+  await w.createAccount();
+  const message = "Mochi account proof";
+  const signature = await w.signMessage(message);
+  expect(await verifyMessage({ address: await w.getAccount(), message, signature })).toBe(true);
+});

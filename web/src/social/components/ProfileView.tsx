@@ -25,6 +25,8 @@ import { Modal } from "./Modal";
 import { Sidebar } from "./Sidebar";
 import { PostCard } from "./PostCard";
 import { WalletActions } from "./WalletActions";
+import { InviteButton } from "./InviteButton";
+import { endInviteSession } from "@social/lib/invites";
 
 /**
  * A balance, short enough to sit in a row of buttons.
@@ -41,6 +43,8 @@ function formatMon(wei: bigint): string {
 }
 
 export function ProfileView() {
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [address, setAddress] = useState<Address | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<IndexedPost[]>([]);
@@ -95,6 +99,18 @@ export function ProfileView() {
   }, []);
 
   const isYou = Boolean(me && address && me.toLowerCase() === address.toLowerCase());
+
+  async function signOut() {
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      const gated = await endInviteSession();
+      getWallet().lock();
+      if (gated) window.location.assign("/gate");
+    } catch {
+      setSignOutError("Could not finish signing out. Please try again.");
+    } finally { setSigningOut(false); }
+  }
 
   // The tab says "Profile" until the page knows whose. One prerendered page
   // serves every address, so this is the only moment the name exists.
@@ -178,13 +194,16 @@ export function ProfileView() {
                 </span>
               )}
               <WalletActions address={address} balance={balance} onChanged={refreshBalance} />
+              <InviteButton />
               <button
                 className="btn btn-quiet btn-sm"
-                onClick={() => getWallet().lock()}
+                onClick={() => void signOut()}
+                disabled={signingOut}
                 data-testid="sign-out"
               >
-                Sign out
+                {signingOut ? "Signing out…" : "Sign out"}
               </button>
+              {signOutError && <p className="error-note" role="alert">{signOutError}</p>}
             </div>
           )}
         </div>

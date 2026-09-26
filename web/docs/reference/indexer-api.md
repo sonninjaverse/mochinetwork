@@ -8,8 +8,10 @@ score is an `eth_call` to the contracts. See
 
 ## Authentication
 
-Every route sits behind the private gate, **except `/health` and `/gate*`**. A valid
-request must carry the `mochi_gate` cookie issued by `POST /gate`. The cookie is
+When enabled, the invite gate protects content routes. `/health` and sign-in
+endpoints stay open; `/gate/invites` separately requires an account session.
+Content requests carry the `mochi_gate` cookie issued by `POST /gate` or
+`POST /gate/session`. The cookie is
 verified with HMAC over the same secret the web middleware uses.
 
 CORS allows only the origins in `WEB_ORIGINS`
@@ -17,7 +19,7 @@ configured with `WEB_ORIGINS` (localhost is allowed during development).
 Requests carry credentials; `*` is not allowed because the cookie is attached.
 
 ```bash
-# /health is the only route callable without a code
+# /health stays open without an invitation
 curl http://localhost:8787/health
 ```
 
@@ -41,7 +43,11 @@ curl http://localhost:8787/health
 | GET | `/replies/:id` | `limit` | `{ ids }` |
 | GET | `/thread/:id` | — | `{ ids }` |
 | POST | `/gate` | form `code`, `next` | 303 + set-cookie |
-| GET | `/gate/status` | — | `{ open }` (200/401) |
+| GET | `/gate/status` | — | `{ enabled, open, address }` |
+| POST | `/gate/challenge` | JSON `address` | `{ id, message }`, expires in 5 minutes |
+| POST | `/gate/session` | JSON `id`, `signature` | verifies wallet, sets cookies |
+| GET | `/gate/invites` | account session cookie | own codes, remaining, joined |
+| POST | `/gate/logout` | — | revokes session, clears cookies, JSON |
 | POST | `/gate/out` | — | 303, clears cookie |
 | POST | `/push/subscribe` | JSON subscription + prefs | `{ ok }` |
 | POST | `/push/prefs` | JSON `address`, `prefs` | `{ ok }` |
@@ -307,8 +313,21 @@ Comments are never ranked; they are read chronologically.
 | Endpoint | Use |
 |---|---|
 | `POST /gate` | Form `code` and `next`; sets the cookie then 303 to `next` |
-| `GET /gate/status` | `{ "open": true }` 200, or `{ "open": false }` 401 |
-| `POST /gate/out` | Clears the cookie, 303 to `/gate/` |
+| `GET /gate/status` | `{ enabled, open, address }`, always 200 |
+| `POST /gate/out` | Revokes the invite session, clears cookies, 303 to `/gate/` |
+
+Invite links use `/gate?code=…` on the web app and only prefill the form. A code
+is spent atomically when `POST /gate` accepts it; repeated submissions fail.
+The recipient then proves their wallet through `/gate/challenge` and
+`/gate/session`. The signed message binds the account, domain, nonce and expiry;
+challenges cannot be replayed or moved between pending browser sessions.
+
+`GET /gate/invites` requires the additional HttpOnly `mochi_invite` cookie issued
+after account proof. A wallet address in the query or the older read cookie is
+insufficient. Responses are private and not cached. Codes report `usedAt`,
+`usedBy` and an optional indexed handle; acceptance without account creation
+appears as pending. Quotas do not refill on login. `/gate/logout` revokes the
+current account session and returns JSON for the app's sign-out action.
 
 `next` accepts only internal paths; `//evil.com` is treated as `/`.
 

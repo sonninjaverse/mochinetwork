@@ -16,7 +16,9 @@ Use the Open app link in this handbook. For local setup, follow
 [Running and deploying Mochi](/reference/deploy).
 
 The invite gate is optional and disabled by default. If a deployment enables it,
-the team supplies an invite code; the handbook never contains gate codes or keys.
+ask a member for a single-use invite code. Accept it, then create your passkey
+account to receive three invitations of your own. Returning members can use
+**Sign in with passkey** without a new code. See [Invitations](/guide/invites).
 
 ## An account is a passkey
 

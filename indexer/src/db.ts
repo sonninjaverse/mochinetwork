@@ -3,8 +3,8 @@ import Database from "better-sqlite3";
 export type Db = Database.Database;
 
 /**
- * Stores raw events only. Every aggregate — like counts, karma — is derived at
- * read time by queries.ts.
+ * Chain tables store raw events. Counts and karma are derived at
+ * read time by queries.ts. Invite and push tables hold local application state.
  *
  * Holding a running counter would make a rebuild depend on the order events
  * were applied in, which is exactly what the determinism test in Task 5 exists
@@ -99,6 +99,37 @@ export function openDb(path: string): Db {
       id         INTEGER PRIMARY KEY CHECK (id = 1),
       last_block INTEGER NOT NULL
     );
+
+    -- Invite state is local application data, not a projection of chain logs.
+    -- Keep it when rebuilding the event index.
+    CREATE TABLE IF NOT EXISTS invite_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS invite_members (
+      address TEXT PRIMARY KEY,
+      invited_by TEXT REFERENCES invite_members(address),
+      joined_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS invite_codes (
+      code TEXT PRIMARY KEY,
+      owner TEXT REFERENCES invite_members(address),
+      created_at INTEGER NOT NULL,
+      used_at INTEGER,
+      used_by TEXT UNIQUE REFERENCES invite_members(address)
+    );
+    CREATE INDEX IF NOT EXISTS idx_invite_owner ON invite_codes(owner);
+    CREATE TABLE IF NOT EXISTS invite_sessions (
+      token_hash TEXT PRIMARY KEY,
+      code TEXT REFERENCES invite_codes(code),
+      address TEXT REFERENCES invite_members(address),
+      expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS invite_challenges (
+      id TEXT PRIMARY KEY,
+      address TEXT NOT NULL,
+      message TEXT NOT NULL,
+      session_hash TEXT,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_invite_challenge_expiry ON invite_challenges(expires_at);
 
     INSERT OR IGNORE INTO cursor (id, last_block) VALUES (1, 0);
 

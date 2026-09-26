@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { profilePath } from "@social/lib/permalink";
 import { useViewer } from "@social/lib/viewer";
+import { InviteButton } from "./InviteButton";
 
 /**
  * Reddit's left rail. On a phone the same list is the bottom bar.
@@ -47,6 +48,7 @@ export function Sidebar() {
             Profile
           </Link>
         )}
+        <InviteButton sidebar />
       </nav>
     </aside>
   );

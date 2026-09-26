@@ -1,6 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Hono, type Context, type Next } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { bodyLimit } from "hono/body-limit";
+import { isAddress, verifyMessage, type Address, type Hex } from "viem";
+import type { Db } from "./db";
+import {
+  admitAccount, createChallenge, getChallenge, hashToken, initializeInvites,
+  invitationsFor, inviteSession, INVITE_SESSION_COOKIE, INVITES_PER_ACCOUNT, redeemInvite,
+} from "./invites";
 
 /// The cookie the gate reads, on the web and on the API. It is set once by
 /// POST /gate and then verified statelessly by both ends.
@@ -38,7 +45,7 @@ export function gateFromEnv(env: NodeJS.ProcessEnv = process.env): Gate | null {
       .split(",")
       .map((code) => code.trim())
       .filter(Boolean),
-    ttlSeconds: Number.isFinite(ttl) && ttl > 0 ? Math.min(Math.trunc(ttl), MAX_TTL_SECONDS) : MAX_TTL_SECONDS,
+    ttlSeconds: Number.isFinite(ttl) && ttl >= 1 ? Math.min(Math.trunc(ttl), MAX_TTL_SECONDS) : MAX_TTL_SECONDS,
     cookieDomain: env.GATE_COOKIE_DOMAIN?.trim() || undefined,
     webOrigin: (env.GATE_WEB_ORIGIN?.trim() || "http://localhost:3000").replace(/\/+$/, ""),
   };
@@ -78,64 +85,120 @@ export function verifyGate(
   return timingSafeEqual(Buffer.from(signature), Buffer.from(expected)) ? expiry : null;
 }
 
-/// A code that matches, checked in constant time per candidate so a wrong code
-/// cannot be narrowed down a character at a time by watching how long the
-/// answer took.
-function matchCode(candidate: string, codes: string[]): boolean {
-  const given = Buffer.from(candidate);
-  let hit = false;
-  for (const code of codes) {
-    const known = Buffer.from(code);
-    // timingSafeEqual throws on length mismatch, so keep the lengths equal
-    // before comparing and let every candidate do the same amount of work.
-    if (given.length === known.length && timingSafeEqual(given, known)) hit = true;
-  }
-  return hit;
-}
-
-/// A path on this site, never another host: `//evil.com` is a path to a
-/// browser, so refusing it is the whole open-redirect defence.
+/** Only a local path, including after URL normalization. */
 function safeNext(value: unknown): string {
-  const next = typeof value === "string" ? value : "";
-  return next === "/" || /^\/[^/\\]/.test(next) ? next : "/";
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || /[\\\x00-\x20]/.test(value)) return "/";
+  return value;
 }
 
-export function gateRoutes(gate: Gate): Hono {
+export function gateRoutes(gate: Gate, db: Db, allowedOrigins: string[] = [gate.webOrigin]): Hono {
   const app = new Hono();
-
-  /// Whether an existing cookie still opens the gate, so a page can send the
-  /// reader to /gate/ only when it has to.
-  app.get("/gate/status", (c) => {
-    const open = verifyGate(getCookie(c, GATE_COOKIE), gate.secret) !== null;
-    return c.json({ open }, open ? 200 : 401);
-  });
-
-  /// A native cross-origin form post, not a fetch: the browser accepts the
-  /// Set-Cookie without CORS credentials, and the 303 turns the POST into a
-  /// plain navigation to wherever the reader was going.
-  app.post("/gate", async (c) => {
-    const body = await c.req.parseBody();
-    if (!matchCode(String(body.code ?? ""), gate.codes)) {
-      return c.redirect(`${gate.webOrigin}/gate/?bad=1`, 303);
+  initializeInvites(db, gate.codes);
+  const attempts = new Map<string, { n: number; until: number }>();
+  app.use("/gate/*", bodyLimit({ maxSize: 4096 }));
+  app.use("/gate", bodyLimit({ maxSize: 4096 }));
+  app.use("*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    if (c.req.method === "POST" && c.req.path.startsWith("/gate")) {
+      const origin = c.req.header("origin");
+      // The site's no-referrer policy makes a cross-origin native form send
+      // Origin: null. Only code redemption accepts that: the one-use code is
+      // the credential. Account proofs and logout still require a listed origin.
+      const privateForm = origin === "null" && c.req.path === "/gate";
+      if (origin && !privateForm && !allowedOrigins.includes(origin)) return c.json({ error: "Origin not allowed." }, 403);
+      // Cloudflare supplies this at the tunnel. Never trust X-Forwarded-For.
+      const key = hashToken(c.req.header("cf-connecting-ip") ?? "local");
+      const now = Date.now();
+      for (const [ip, entry] of attempts) if (entry.until <= now) attempts.delete(ip);
+      const entry = attempts.get(key) ?? { n: 0, until: now + 60_000 };
+      if (++entry.n > 30 || attempts.size >= 10_000 && !attempts.has(key)) {
+        c.header("Retry-After", "60");
+        return c.json({ error: "Too many attempts. Wait a minute and try again." }, 429);
+      }
+      attempts.set(key, entry);
     }
-
-    const expiry = Math.floor(Date.now() / 1000) + gate.ttlSeconds;
-    setCookie(c, GATE_COOKIE, `${expiry}.${signGate(expiry, gate.secret)}`, {
-      domain: gate.cookieDomain,
-      path: "/",
-      maxAge: gate.ttlSeconds,
-      secure: true,
-      httpOnly: true,
-      sameSite: "Lax",
-    });
-    return c.redirect(`${gate.webOrigin}${safeNext(body.next)}`, 303);
+    await next();
   });
 
-  app.post("/gate/out", (c) => {
-    deleteCookie(c, GATE_COOKIE, { domain: gate.cookieDomain, path: "/" });
+  const cookieOptions = {
+    domain: gate.cookieDomain, path: "/", maxAge: gate.ttlSeconds,
+    secure: true, httpOnly: true, sameSite: "Lax" as const,
+  };
+  function setSession(c: Context, token: string) {
+    const expiry = Math.floor(Date.now() / 1000) + gate.ttlSeconds;
+    setCookie(c, GATE_COOKIE, `${expiry}.${signGate(expiry, gate.secret)}`, cookieOptions);
+    setCookie(c, INVITE_SESSION_COOKIE, token, cookieOptions);
+  }
+
+  app.get("/gate/status", c => {
+    const open = verifyGate(getCookie(c, GATE_COOKIE), gate.secret) !== null;
+    const session = inviteSession(db, getCookie(c, INVITE_SESSION_COOKIE));
+    return c.json({ enabled: true, open, address: session?.address ?? null });
+  });
+
+  // GET invite links only prefill the form. Link previews never spend a code.
+  app.post("/gate", async c => {
+    const body = await c.req.parseBody();
+    const next = safeNext(body.next);
+    const existing = inviteSession(db, getCookie(c, INVITE_SESSION_COOKIE));
+    if (existing?.address) return c.redirect(`${gate.webOrigin}${next}`, 303);
+    const token = redeemInvite(db, String(body.code ?? ""), gate.ttlSeconds);
+    if (!token) return c.redirect(`${gate.webOrigin}/gate/?bad=1${next !== "/" ? `&next=${encodeURIComponent(next)}` : ""}`, 303);
+    if (existing) db.prepare("DELETE FROM invite_sessions WHERE token_hash = ?").run(existing.token_hash);
+    setSession(c, token);
+    return c.redirect(`${gate.webOrigin}${next}`, 303);
+  });
+
+  app.post("/gate/challenge", async c => {
+    const body = await c.req.json().catch(() => null);
+    if (!body || typeof body.address !== "string" || !isAddress(body.address, { strict: false })) {
+      return c.json({ error: "A valid account is required." }, 400);
+    }
+    const challenge = createChallenge(db, body.address.toLowerCase(), gate.webOrigin, getCookie(c, INVITE_SESSION_COOKIE));
+    if (!challenge) return c.json({ error: "Please try again in a few minutes." }, 429);
+    return c.json({ id: challenge.id, message: challenge.message });
+  });
+
+  app.post("/gate/session", async c => {
+    const body = await c.req.json().catch(() => null);
+    if (!body || typeof body.id !== "string" || !/^[a-f0-9]{64}$/.test(body.id)
+        || typeof body.signature !== "string" || !/^0x[a-f0-9]{130}$/i.test(body.signature)) {
+      return c.json({ error: "Invalid sign-in proof." }, 400);
+    }
+    const previous = getCookie(c, INVITE_SESSION_COOKIE);
+    const challenge = getChallenge(db, body.id, previous);
+    const verified = challenge && await verifyMessage({
+      address: challenge.address as Address, message: challenge.message, signature: body.signature as Hex,
+    }).catch(() => false);
+    if (!verified) return c.json({ error: "Sign-in expired or could not be verified. Please try again." }, 401);
+    const token = admitAccount(db, body.id, gate.ttlSeconds, previous);
+    if (!token) return c.json({ error: "This account needs an invitation. Enter an unused code first." }, 403);
+    setSession(c, token);
+    return c.json({ open: true, address: challenge!.address });
+  });
+
+  app.get("/gate/invites", c => {
+    const session = inviteSession(db, getCookie(c, INVITE_SESSION_COOKIE));
+    if (!session?.address) return c.json({ error: "Confirm your account to see your invitations." }, 401);
+    const codes = invitationsFor(db, session.address);
+    return c.json({ address: session.address, allowance: INVITES_PER_ACCOUNT,
+      remaining: codes.filter(code => code.usedAt === null).length,
+      joined: codes.filter(code => code.usedBy !== null).length, codes });
+  });
+
+  function clearSession(c: Context) {
+    const token = getCookie(c, INVITE_SESSION_COOKIE);
+    if (token) db.prepare("DELETE FROM invite_sessions WHERE token_hash = ?").run(hashToken(token));
+    for (const name of [GATE_COOKIE, INVITE_SESSION_COOKIE]) deleteCookie(c, name, cookieOptions);
+  }
+  app.post("/gate/logout", c => {
+    clearSession(c);
+    return c.json({ ok: true });
+  });
+  app.post("/gate/out", c => {
+    clearSession(c);
     return c.redirect(`${gate.webOrigin}/gate/`, 303);
   });
-
   return app;
 }
 

@@ -54,8 +54,10 @@ export function createServer(
   // so that /gate answers instead of being refused by its own check.
   const gate = gateFromEnv();
   if (gate) {
-    app.route("/", gateRoutes(gate));
+    app.route("/", gateRoutes(gate, db, [...new Set([...webOrigins(), gate.webOrigin])]));
     app.use("/*", gateMiddleware(gate));
+  } else {
+    app.get("/gate/status", c => c.json({ enabled: false, open: true, address: null }));
   }
 
   /**

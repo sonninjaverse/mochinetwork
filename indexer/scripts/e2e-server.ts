@@ -14,7 +14,8 @@ import { createServer } from "../src/server";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const rpc = "http://127.0.0.1:8547";
-const origin = "http://127.0.0.1:3107";
+const invites = process.env.E2E_INVITES === "1";
+const origin = invites ? "http://localhost:3107" : "http://127.0.0.1:3107";
 const chain = defineChain({ id: 31337, name: "Local E2E", nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [rpc] } } });
 // Anvil's public fixture mnemonic. These accounts exist only on this local chain.
 const mnemonic = "test test test test test test test test test test test junk";
@@ -132,15 +133,21 @@ async function main() {
   interval.unref();
 
   const web = join(root, "web");
-  const indexerUrl = "http://127.0.0.1:3109";
+  const indexerUrl = invites ? "http://localhost:3109" : "http://127.0.0.1:3109";
+  process.env.GATE_SECRET = invites ? "local-invite-fixture-secret" : "";
+  if (invites) {
+    process.env.GATE_CODES = "e2e-desktop,e2e-mobile";
+    process.env.GATE_WEB_ORIGIN = origin;
+    process.env.GATE_COOKIE_DOMAIN = "";
+  }
   const env = {
     ...process.env,
     // Both the feed and wallet use the disposable local chain.
     NEXT_PUBLIC_MONAD_CHAIN_ID: "31337", NEXT_PUBLIC_MONAD_RPC_HTTP: rpc, NEXT_PUBLIC_MONAD_RPC_WS: "",
     NEXT_PUBLIC_IDENTITY_REGISTRY: identity, NEXT_PUBLIC_POST_REGISTRY: posts,
     NEXT_PUBLIC_ALGORITHM_REGISTRY: registry, NEXT_PUBLIC_COMMUNITY_REGISTRY: community,
-    NEXT_PUBLIC_INDEXER_URL: indexerUrl, NEXT_PUBLIC_WALLET: "burner",
-    GATE_SECRET: "",
+    NEXT_PUBLIC_INDEXER_URL: indexerUrl, NEXT_PUBLIC_WALLET: invites ? "mera" : "burner",
+    GATE_SECRET: process.env.GATE_SECRET,
   };
   await run("pnpm", ["build"], web, env);
   // Exercise the production deployment artifact: the

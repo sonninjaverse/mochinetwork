@@ -7,6 +7,7 @@ import { profilePath } from "@social/lib/permalink";
 import { getWallet } from "@/lib/wallet";
 import { explainError, isUserCancelled } from "@/lib/wallet/errors";
 import { hasPasskeyHere } from "@/lib/wallet/remember";
+import { confirmInviteAccount } from "@social/lib/invites";
 import { Modal } from "./Modal";
 
 /// The whole of signing up, now that nothing is sent on chain to do it.
@@ -70,6 +71,7 @@ export function SignInButton() {
       const wallet = getWallet();
       await wallet.createAccount();
       const created = await wallet.getAccount();
+      await confirmInviteAccount();
       setAddress(created);
       setConfirming(false);
       // Onto the profile, where the username and the wallet both are. Client
@@ -92,6 +94,7 @@ export function SignInButton() {
     try {
       const w = getWallet();
       await w.signIn();
+      await confirmInviteAccount();
       setAddress(await w.getAccount());
     } catch (e) {
       if (!isUserCancelled(e)) setError(explainError(e));
@@ -104,7 +107,7 @@ export function SignInButton() {
     // Nothing in the header once you are signed in. The account is reachable
     // from the rail on a wide screen and the bar on a phone, and repeating the
     // address beside every page's controls was noise, not a destination.
-    return null;
+    return error ? <span className="error-note" role="alert">{error}</span> : null;
   }
 
   const warning = confirming ? (

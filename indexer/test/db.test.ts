@@ -8,7 +8,7 @@ describe("schema", () => {
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all()
       .map((r: any) => r.name);
-    expect(names).toEqual(["communities", "cursor", "dislikes", "handles", "indexed_sources", "likes", "memberships", "posts", "push_subscriptions"]);
+    expect(names).toEqual(["communities", "cursor", "dislikes", "handles", "indexed_sources", "invite_challenges", "invite_codes", "invite_members", "invite_meta", "invite_sessions", "likes", "memberships", "posts", "push_subscriptions"]);
   });
 
   it("starts the cursor at block zero", () => {

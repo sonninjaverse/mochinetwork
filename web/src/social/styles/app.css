@@ -2378,3 +2378,23 @@ html, body { touch-action: pan-x pan-y; }
     display: none;
   }
 }
+
+/* Invitations share the account dialogs on desktop and mobile. */
+.invite-nav { width: 100%; text-align: left; border: 0; background: none; cursor: pointer; font-family: inherit; }
+.invites-body { min-width: 0; max-height: calc(100dvh - 160px); overflow-y: auto; }
+.invites-summary { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 22px 0 12px; font-size: 13px; color: var(--text-muted); }
+.invites-summary strong { font-size: 32px; line-height: 1; color: var(--text-primary); font-weight: 600; }
+.invite-list { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 10px; }
+.invite-card { border: 1px solid var(--divider); border-radius: 12px; padding: 16px; background: var(--bg-page); }
+.invite-code-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.invite-code-row code { font-size: 14px; color: var(--text-primary); overflow-wrap: anywhere; user-select: all; }
+.invite-status { color: var(--accent); font-size: 11px; font-weight: 600; }
+.invite-card.is-used .invite-status, .invite-card.is-used code { color: var(--text-muted); }
+.invite-actions { display: flex; gap: 8px; margin-top: 14px; }
+.invite-used-by { font-size: 12px; color: var(--text-muted); margin: 12px 0 0; }
+.invite-used-by a { color: var(--accent); }
+.gate-returning { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--divider); text-align: center; }
+.gate-returning p { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
+.gate-invite-note { font-size: 12px; color: var(--text-muted); margin: 12px 0 0; }
+
+.gate-card > form, .gate-returning { width: 100%; }

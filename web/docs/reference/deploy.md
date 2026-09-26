@@ -106,8 +106,29 @@ Optional services:
 - `PINATA_JWT` enables image uploads; otherwise uploads return 503.
 - A VAPID key pair enables Web Push. Only the public half belongs in the web app.
 - `GATE_SECRET` enables an invite gate. Leave it unset for a public demo. If used,
-  configure the same secret in the app and indexer, plus `GATE_CODES`,
+  configure the same secret in the app and indexer, plus initial single-use `GATE_CODES`,
   `GATE_WEB_ORIGIN`, and an appropriate shared `GATE_COOKIE_DOMAIN`.
+
+### Invitation state
+
+The indexer stores invitations, account admission, and sessions in SQLite.
+Every admitted account gets three single-use codes after proving ownership with
+its passkey wallet. Existing indexed participants are admitted once on migration;
+future on-chain activity does not bypass invitations. Existing read cookies keep
+working, but do not grant access to personal invite codes without account proof.
+A passkey with no prior indexed activity still needs an invitation once.
+
+Bootstrap codes in `GATE_CODES` are imported without resetting their usage.
+Generate additional operator invitations on the indexer host:
+
+```bash
+cd indexer
+npm run invites -- 3
+```
+
+This prints new codes for private distribution. Keep them out of commits and CI
+logs. Back up the entire database, including `invite_*` tables, before upgrades.
+Deploy the indexer before the web app when introducing invitation endpoints.
 
 ## Deploy the contracts
 

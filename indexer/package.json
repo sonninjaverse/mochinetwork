@@ -8,7 +8,8 @@
     "seed:check": "node --env-file=.env --import tsx seed/check.ts",
     "demo:check": "node --env-file=.env --import tsx seed/demo-check.ts",
     "test": "vitest run",
-    "e2e:serve": "node --import tsx scripts/e2e-server.ts"
+    "e2e:serve": "node --import tsx scripts/e2e-server.ts",
+    "invites": "node --env-file=.env --import tsx scripts/invites.ts"
   },
   "keywords": [],
   "author": "",

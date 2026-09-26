@@ -151,6 +151,11 @@ export function createMeraAdapter(): WalletAdapter {
       settle();
     },
 
+    async signMessage(message: string) {
+      if (!current) await adapter.signIn();
+      return current!.account.signMessage({ message });
+    },
+
     lock() {
       endSession();
       forgetAddress();

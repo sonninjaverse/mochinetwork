@@ -55,3 +55,14 @@ public testnet values and the production domains. `.env.example` keeps localhost
 defaults for local development. `NEXT_PUBLIC_*` values are baked into
 the browser bundle, so rebuild after changing them. Set deployment URLs explicitly
 and keep WebAuthn's relying party stable for existing passkeys.
+
+### Invitation flow
+
+Gated deployments show **Invite friends** on your profile and in the desktop
+sidebar. Accept a friend's code, create your passkey account, then copy any of
+your three single-use codes or links. Returning accounts sign in at `/gate` with
+the same passkey. Account proofs are messages, not on-chain transactions.
+
+Run `pnpm test:e2e:invites` from a clean checkout to test the complete flow with
+a local indexer, Anvil and virtual passkeys on desktop and mobile. The separate
+`pnpm test:e2e` suite exercises the app with the optional gate disabled.

@@ -44,6 +44,11 @@ export function createBurnerAdapter(): WalletAdapter {
       await adapter.unlock();
     },
 
+    async signMessage(message: string) {
+      if (!key) throw new Error("Sign in before confirming your account.");
+      return privateKeyToAccount(key).signMessage({ message });
+    },
+
     lock() {
       if (key) key = null;
       forgetAddress();

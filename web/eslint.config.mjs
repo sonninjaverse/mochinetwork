@@ -21,6 +21,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "release/**",
+      "docs/.vitepress/dist/**",
+      "docs/.vitepress/cache/**",
       "next-env.d.ts",
       "public/brand/source/**",
     ],
