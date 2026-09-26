@@ -55,6 +55,14 @@ test("invite links prefill the native form without consuming the code", async ()
   expect(mocks.confirm).not.toHaveBeenCalled();
 });
 
+test("offers following X as a way to get a code", async () => {
+  render(<GateForm />);
+  const follow = await screen.findByTestId("gate-follow");
+  expect(follow).toHaveAttribute("href", "https://x.com/mochidotmeme");
+  expect(follow).toHaveAttribute("target", "_blank");
+  expect(follow).toHaveAttribute("rel", "noreferrer");
+});
+
 test("a returning account proves ownership before returning to the requested page", async () => {
   window.history.replaceState({}, "", "/gate?next=%2Fpopular");
   mocks.confirm.mockResolvedValue(true);

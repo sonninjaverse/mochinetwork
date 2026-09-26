@@ -60,6 +60,12 @@ export function GateForm() {
         </button>
         <p className="gate-invite-note">Each code can be used once. Your own invitations arrive when you create your account.</p>
       </form>
+      <a className="btn btn-quiet gate-follow" href="https://x.com/mochidotmeme" target="_blank" rel="noreferrer" data-testid="gate-follow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+        Follow @mochidotmeme on X to get a code
+      </a>
       <div className="gate-returning">
         <p>Already part of Mochi?</p>
         <button type="button" className="btn btn-quiet" onClick={() => void signIn()} disabled={!BASE || !ready || busy} data-testid="gate-sign-in">
