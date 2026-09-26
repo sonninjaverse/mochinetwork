@@ -64,7 +64,7 @@ jobs:
         if: env.CLOUDFLARE_API_TOKEN != ''
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
           # web/ no longer depends on wrangler (the app left Workers), so the
