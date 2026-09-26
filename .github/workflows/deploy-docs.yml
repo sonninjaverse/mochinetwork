@@ -32,9 +32,8 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # Referenced from a step `if` through env, because the secrets context is
-      # not available to `if` expressions directly. The dedicated Pages token is
-      # preferred; the older shared token is a fallback while it is not set.
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      # not available to `if` expressions directly.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +63,7 @@ jobs:
         if: env.CLOUDFLARE_API_TOKEN != ''
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
           # web/ no longer depends on wrangler (the app left Workers), so the
