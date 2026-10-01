@@ -77,6 +77,9 @@ With `GATE_SECRET` configured, the gate accepts single-use invitations. Each
 wallet admitted with a signed, expiring challenge gets three personal codes.
 Codes, referrals and hashed sessions persist in the same SQLite database.
 `GATE_CODES` seeds bootstrap invitations once; restarting never refreshes a code.
+Accounts listed in `GATE_DEV_ACCOUNT` are exempt from the three-code cap: they
+see unlimited invitations, are topped up on read and may issue a fresh batch
+with the Renew codes button (`POST /gate/invites/renew`).
 
 Issue additional bootstrap invitations on the host with `npm run invites -- 3`.
 The command prints codes for private distribution; never commit the output.

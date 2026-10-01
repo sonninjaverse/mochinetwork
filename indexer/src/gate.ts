@@ -6,7 +6,8 @@ import { isAddress, verifyMessage, type Address, type Hex } from "viem";
 import type { Db } from "./db";
 import {
   admitAccount, createChallenge, getChallenge, hashToken, initializeInvites,
-  invitationsFor, inviteSession, INVITE_SESSION_COOKIE, INVITES_PER_ACCOUNT, redeemInvite,
+  invitationsFor, inviteSession, INVITE_SESSION_COOKIE, INVITES_PER_ACCOUNT, isDevAccount,
+  redeemInvite, renewInvites, topUpDevInvites,
 } from "./invites";
 
 /// The cookie the gate reads, on the web and on the API. It is set once by
@@ -24,6 +25,8 @@ export type Gate = {
   /// A shared parent host for the app and API. Undefined keeps it host-only.
   cookieDomain: string | undefined;
   webOrigin: string;
+  /// Accounts exempt from the three-code cap. They may issue and renew without limit.
+  devAccounts: string[];
 };
 
 /**
@@ -48,6 +51,10 @@ export function gateFromEnv(env: NodeJS.ProcessEnv = process.env): Gate | null {
     ttlSeconds: Number.isFinite(ttl) && ttl >= 1 ? Math.min(Math.trunc(ttl), MAX_TTL_SECONDS) : MAX_TTL_SECONDS,
     cookieDomain: env.GATE_COOKIE_DOMAIN?.trim() || undefined,
     webOrigin: (env.GATE_WEB_ORIGIN?.trim() || "http://localhost:3000").replace(/\/+$/, ""),
+    devAccounts: (env.GATE_DEV_ACCOUNT ?? "")
+      .split(",")
+      .map((address) => address.trim().toLowerCase())
+      .filter(Boolean),
   };
 }
 
@@ -177,13 +184,30 @@ export function gateRoutes(gate: Gate, db: Db, allowedOrigins: string[] = [gate.
     return c.json({ open: true, address: challenge!.address });
   });
 
+  function invitationsPayload(address: string) {
+    const codes = invitationsFor(db, address);
+    return { address, allowance: INVITES_PER_ACCOUNT,
+      unlimited: isDevAccount(address, gate.devAccounts),
+      remaining: codes.filter(code => code.usedAt === null).length,
+      joined: codes.filter(code => code.usedBy !== null).length, codes };
+  }
+
   app.get("/gate/invites", c => {
     const session = inviteSession(db, getCookie(c, INVITE_SESSION_COOKIE));
     if (!session?.address) return c.json({ error: "Confirm your account to see your invitations." }, 401);
-    const codes = invitationsFor(db, session.address);
-    return c.json({ address: session.address, allowance: INVITES_PER_ACCOUNT,
-      remaining: codes.filter(code => code.usedAt === null).length,
-      joined: codes.filter(code => code.usedBy !== null).length, codes });
+    // A developer account is never capped: top its available codes back up on read.
+    if (isDevAccount(session.address, gate.devAccounts)) topUpDevInvites(db, session.address);
+    return c.json(invitationsPayload(session.address));
+  });
+
+  app.post("/gate/invites/renew", c => {
+    const session = inviteSession(db, getCookie(c, INVITE_SESSION_COOKIE));
+    if (!session?.address) return c.json({ error: "Confirm your account to see your invitations." }, 401);
+    if (!isDevAccount(session.address, gate.devAccounts)) {
+      return c.json({ error: "Renewing invitations is limited to the developer account." }, 403);
+    }
+    renewInvites(db, session.address);
+    return c.json(invitationsPayload(session.address));
   });
 
   function clearSession(c: Context) {

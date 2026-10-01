@@ -37,6 +37,22 @@ export function issueCode(db: Db, owner: string | null = null): string {
   return code;
 }
 
+/** True for a configured developer account, which is never capped on invitations. */
+export function isDevAccount(address: string | null | undefined, devAccounts: string[]): boolean {
+  return !!address && devAccounts.includes(address.toLowerCase());
+}
+
+/** Issues a fresh batch of codes for a developer account without touching the old ones. */
+export function renewInvites(db: Db, owner: string, count = INVITES_PER_ACCOUNT): void {
+  db.transaction(() => { for (let i = 0; i < count; i++) issueCode(db, owner); }).immediate();
+}
+
+/** Keeps a developer account's available codes topped up so it never runs out. */
+export function topUpDevInvites(db: Db, owner: string): void {
+  const used = (db.prepare("SELECT count(*) AS n FROM invite_codes WHERE owner = ? AND used_at IS NULL").get(owner) as { n: number }).n;
+  if (used < INVITES_PER_ACCOUNT) renewInvites(db, owner, INVITES_PER_ACCOUNT - used);
+}
+
 export function inviteSession(db: Db, token: string | undefined): Session | undefined {
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return undefined;
   return db.prepare("SELECT * FROM invite_sessions WHERE token_hash = ? AND expires_at > ?")

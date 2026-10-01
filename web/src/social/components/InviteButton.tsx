@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useViewer } from "@social/lib/viewer";
-import { gateStatus, loadInvitations, type Invitations } from "@social/lib/invites";
+import { gateStatus, loadInvitations, renewInvitations, type Invitations } from "@social/lib/invites";
 import { profilePath } from "@social/lib/permalink";
 import { isUserCancelled } from "@/lib/wallet/errors";
 import { Modal } from "./Modal";
@@ -36,6 +36,16 @@ export function InviteButton({ sidebar = false }: { sidebar?: boolean }) {
     } finally { setBusy(false); }
   }
 
+  async function renew() {
+    setBusy(true);
+    setError(null);
+    setCopied(null);
+    try { setData(await renewInvitations()); }
+    catch (e) {
+      setError(isUserCancelled(e) ? "Confirm with your passkey when you’re ready." : e instanceof Error ? e.message : "Could not renew invitations. Try again.");
+    } finally { setBusy(false); }
+  }
+
   async function copy(code: string, link: boolean) {
     const text = link ? `${window.location.origin}/gate?code=${encodeURIComponent(code)}` : code;
     try {
@@ -55,10 +65,13 @@ export function InviteButton({ sidebar = false }: { sidebar?: boolean }) {
         {busy && <p className="modal-note" role="status">Confirming your account…</p>}
         {data && <>
           <div className="invites-summary">
-            <span><strong>{data.remaining}</strong> invites left</span>
+            <span>{data.unlimited ? <><strong>Unlimited</strong> invites</> : <><strong>{data.remaining}</strong> invites left</>}</span>
             <span>{data.joined} {data.joined === 1 ? "friend" : "friends"} joined</span>
           </div>
           <p className="modal-note">Each code lets one friend in. Once they create an account, they get {data.allowance} invites of their own.</p>
+          {data.unlimited && <button className="btn btn-sm" onClick={() => void renew()} disabled={busy} data-testid="renew-invites">
+            {busy ? "Renewing…" : "Renew codes"}
+          </button>}
           <ul className="invite-list">
             {data.codes.map(invite => <li key={invite.code} className={`invite-card${invite.usedAt !== null ? " is-used" : ""}`}>
               <div className="invite-code-row">
@@ -78,7 +91,7 @@ export function InviteButton({ sidebar = false }: { sidebar?: boolean }) {
                 </div>}
             </li>)}
           </ul>
-          {data.remaining === 0 && <p className="modal-note">All your invitations have been accepted. Your friends can keep the circle growing.</p>}
+          {!data.unlimited && data.remaining === 0 && <p className="modal-note">All your invitations have been accepted. Your friends can keep the circle growing.</p>}
         </>}
         {error && <p className="modal-note is-error" role="alert">{error}</p>}
         {!busy && <button className="btn btn-quiet btn-sm" onClick={() => void load()}>{data ? "Refresh" : "Try again"}</button>}

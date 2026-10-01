@@ -3,7 +3,7 @@ import { apiFetch } from "./api";
 
 const BASE = process.env.NEXT_PUBLIC_INDEXER_URL;
 export type Invite = { code: string; usedAt: number | null; usedBy: string | null; handle: string | null };
-export type Invitations = { address: string; allowance: number; remaining: number; joined: number; codes: Invite[] };
+export type Invitations = { address: string; allowance: number; unlimited?: boolean; remaining: number; joined: number; codes: Invite[] };
 export type GateStatus = { enabled: boolean; open: boolean; address: string | null };
 
 async function json<T>(path: string, body?: unknown): Promise<T> {
@@ -39,11 +39,16 @@ export async function confirmInviteAccount(): Promise<boolean> {
   return true;
 }
 
-export async function loadInvitations(): Promise<Invitations> {
+async function currentInvitations(path: string, body?: unknown): Promise<Invitations> {
   if (!await confirmInviteAccount()) throw new Error("Invitations are not enabled on this deployment.");
-  const result = await json<Invitations>("/gate/invites");
+  const result = await json<Invitations>(path, body);
   if (result.address.toLowerCase() !== getWallet().rememberedAddress()?.toLowerCase()) {
     throw new Error("The account changed. Open your invitations again.");
   }
   return result;
 }
+
+export const loadInvitations = () => currentInvitations("/gate/invites");
+
+/** Developer accounts only; issues a fresh batch without spending the old codes. */
+export const renewInvitations = () => currentInvitations("/gate/invites/renew", {});

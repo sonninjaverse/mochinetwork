@@ -39,6 +39,7 @@ beforeEach(() => {
   vi.stubEnv("GATE_CODES", "bootstrap");
   vi.stubEnv("GATE_WEB_ORIGIN", origin);
   vi.stubEnv("GATE_COOKIE_DOMAIN", "social.example");
+  vi.stubEnv("GATE_DEV_ACCOUNT", "");
   db = openDb(":memory:");
   app = createServer(db);
 });
@@ -151,6 +152,32 @@ describe("account proof and session protection", () => {
     const limited = await redeem("wrong");
     expect(limited.status).toBe(429);
     expect(limited.headers.get("retry-after")).toBe("60");
+  });
+});
+
+describe("developer accounts", () => {
+  it("reports unlimited invitations, tops up on read, and renews without spending old codes", async () => {
+    vi.stubEnv("GATE_DEV_ACCOUNT", alice.address);
+    app = createServer(db);
+    const cookie = cookies(await signIn(alice, cookies(await redeem("bootstrap"))));
+    const first = await invites(cookie);
+    expect(first).toMatchObject({ unlimited: true, allowance: 3, remaining: 3 });
+    await redeem(first.codes[0].code);
+    await redeem(first.codes[1].code);
+    await redeem(first.codes[2].code);
+    const refilled = await invites(cookie);
+    expect(refilled).toMatchObject({ unlimited: true, remaining: 3 });
+    expect(refilled.codes).toHaveLength(6);
+    const renewed = await (await post("/gate/invites/renew", {}, cookie)).json();
+    expect(renewed).toMatchObject({ unlimited: true, remaining: 6 });
+    expect(renewed.codes).toHaveLength(9);
+  });
+
+  it("refuses renewal for an ordinary member", async () => {
+    const cookie = cookies(await signIn(alice, cookies(await redeem("bootstrap"))));
+    const res = await post("/gate/invites/renew", {}, cookie);
+    expect(res.status).toBe(403);
+    expect((await invites(cookie)).unlimited).toBe(false);
   });
 });
 
