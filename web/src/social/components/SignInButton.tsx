@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { profilePath } from "@social/lib/permalink";
-import { getWallet } from "@/lib/wallet";
+import { getWallet, walletKind } from "@/lib/wallet";
 import { explainError, isUserCancelled } from "@/lib/wallet/errors";
 import { hasPasskeyHere } from "@/lib/wallet/remember";
 import { confirmInviteAccount } from "@social/lib/invites";
@@ -108,6 +108,25 @@ export function SignInButton() {
     // from the rail on a wide screen and the bar on a phone, and repeating the
     // address beside every page's controls was noise, not a destination.
     return error ? <span className="error-note" role="alert">{error}</span> : null;
+  }
+
+  // Privy owns the whole flow — external wallet or email — so there is no
+  // passkey to create or find and the passkey warning below does not apply.
+  if (walletKind() === "privy") {
+    return (
+      <div className="account">
+        {error && <span className="error-note">{error}</span>}
+        <button
+          type="button"
+          className="btn"
+          onClick={() => void signIn()}
+          disabled={busy}
+          data-testid="sign-in"
+        >
+          {busy ? "Waiting…" : "Sign in"}
+        </button>
+      </div>
+    );
   }
 
   const warning = confirming ? (

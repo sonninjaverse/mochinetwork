@@ -32,3 +32,12 @@ test("no extension-wallet stack is left", () => {
   );
   expect(offenders.map(rel)).toEqual([]);
 });
+
+// Privy is the opt-in external-wallet adapter. Keep it behind the wallet seam
+// so everything else keeps coding against WalletAdapter, not a second SDK.
+test("privy is imported only through the wallet seam", () => {
+  const offenders = sources(WEB)
+    .filter((file) => !rel(file).startsWith("src/lib/wallet/") && rel(file) !== "app/privy-providers.tsx")
+    .filter((file) => /@privy-io\//.test(readFileSync(file, "utf8")));
+  expect(offenders.map(rel)).toEqual([]);
+});

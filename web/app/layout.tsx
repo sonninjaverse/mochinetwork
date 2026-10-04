@@ -4,6 +4,7 @@ import { ChainPulse } from "@social/components/ChainPulse";
 import { BRAND } from "@/lib/brand";
 import { inter, instrumentSerif } from "@/lib/fonts";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -58,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         {/* Runs before paint so the page never flashes the wrong theme. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
-        {children}
+        <Providers>{children}</Providers>
         <ChainPulse />
       </body>
     </html>

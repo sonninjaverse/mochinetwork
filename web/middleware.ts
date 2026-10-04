@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { GATE_COOKIE, gateAllows, gateExempt, isFilePath } from "@/lib/edge/gate";
 import { buildCsp, SECURITY_HEADERS } from "@/lib/edge/headers";
 import { RETIRED_ROUTES } from "@/lib/routes";
+import {
+  PRIVY_CONNECT_ORIGINS,
+  PRIVY_FRAME_ORIGINS,
+  PRIVY_IMAGE_ORIGINS,
+  privyEnabled,
+} from "@/lib/wallet/privy-config";
 
 // A bare host name or IP literal with an optional port, nothing else: the
 // origin below becomes a redirect's Location.
@@ -45,6 +51,7 @@ export async function middleware(request: NextRequest) {
   const origin = publicOrigin(request);
 
   const nonce = btoa(crypto.randomUUID());
+  const privy = privyEnabled();
   const csp = buildCsp({
     nonce,
     secure: origin.protocol === "https:",
@@ -55,8 +62,14 @@ export async function middleware(request: NextRequest) {
       process.env.NEXT_PUBLIC_MONAD_RPC_WS,
       // CommunityHeader and CommunityAbout fetch() their metadata from it.
       process.env.NEXT_PUBLIC_IPFS_GATEWAY,
+      ...(privy ? PRIVY_CONNECT_ORIGINS : []),
     ],
-    images: [process.env.NEXT_PUBLIC_IPFS_GATEWAY],
+    images: [
+      process.env.NEXT_PUBLIC_IPFS_GATEWAY,
+      ...(privy ? PRIVY_IMAGE_ORIGINS : []),
+    ],
+    // The Privy login modal is served from an iframe.
+    frames: privy ? PRIVY_FRAME_ORIGINS : [],
     // The invite gate posts a plain form to the indexer.
     forms: [process.env.NEXT_PUBLIC_INDEXER_URL],
   });

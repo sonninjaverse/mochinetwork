@@ -8,6 +8,7 @@ const base = {
   dev: false,
   connect: ["https://api.social.example/", "https://testnet-rpc.monad.xyz", undefined, "wss://ws.example/x"],
   images: ["https://gateway.pinata.cloud/ipfs/"],
+  frames: [] as (string | undefined)[],
   forms: [] as (string | undefined)[],
 };
 
@@ -26,6 +27,14 @@ test("data may come only from the indexer, the RPCs and the page itself", () => 
 
 test("images may come from the IPFS gateway", () => {
   expect(buildCsp(base)).toContain("img-src 'self' data: blob: https://gateway.pinata.cloud");
+});
+
+// The Privy login modal lives in an iframe; without this the wallet is inert.
+test("frames are self only, and the listed origins when given", () => {
+  expect(buildCsp(base)).toMatch(/frame-src 'self'(;|$)/);
+  expect(buildCsp({ ...base, frames: ["https://auth.privy.io"] })).toContain(
+    "frame-src 'self' https://auth.privy.io",
+  );
 });
 
 test("the page cannot be framed, and plugins and base tags are off", () => {

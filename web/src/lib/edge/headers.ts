@@ -7,6 +7,8 @@ export type CspInput = {
   dev: boolean;
   connect: (string | undefined)[];
   images: (string | undefined)[];
+  /** Origins that may be embedded in a frame, e.g. the Privy auth iframe. */
+  frames: (string | undefined)[];
   /** Origins a plain HTML form may post to, e.g. the invite gate's indexer. */
   forms: (string | undefined)[];
 };
@@ -24,7 +26,7 @@ function origins(urls: (string | undefined)[]): string[] {
   return [...out];
 }
 
-export function buildCsp({ nonce, secure, dev, connect, images, forms }: CspInput): string {
+export function buildCsp({ nonce, secure, dev, connect, images, frames, forms }: CspInput): string {
   const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
@@ -36,6 +38,7 @@ export function buildCsp({ nonce, secure, dev, connect, images, forms }: CspInpu
     ["connect-src 'self'", ...origins(connect)].join(" "),
     "manifest-src 'self'",
     "worker-src 'self'",
+    ["frame-src 'self'", ...origins(frames)].join(" "),
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'none'",
