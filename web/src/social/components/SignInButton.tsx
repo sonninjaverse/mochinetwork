@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { profilePath } from "@social/lib/permalink";
 import { getWallet, walletKind } from "@/lib/wallet";
+import type { WalletMethod } from "@/lib/wallet";
 import { explainError, isUserCancelled } from "@/lib/wallet/errors";
 import { hasPasskeyHere } from "@/lib/wallet/remember";
 import { confirmInviteAccount } from "@social/lib/invites";
@@ -64,12 +65,12 @@ export function SignInButton() {
    * something. MON is deposited deliberately, from a wallet the reader
    * controls.
    */
-  async function signUp() {
+  async function signUp(method: WalletMethod = "passkey") {
     setError(null);
     setBusy(true);
     try {
       const wallet = getWallet();
-      await wallet.createAccount();
+      await (wallet.createAccountWith?.(method) ?? wallet.createAccount());
       const created = await wallet.getAccount();
       await confirmInviteAccount();
       setAddress(created);
@@ -88,12 +89,12 @@ export function SignInButton() {
   }
 
   /** Someone who already has a passkey. No name is asked for: they have one. */
-  async function signIn() {
+  async function signIn(method: WalletMethod = "passkey") {
     setBusy(true);
     setError(null);
     try {
       const w = getWallet();
-      await w.signIn();
+      await (w.signInWith?.(method) ?? w.signIn());
       await confirmInviteAccount();
       setAddress(await w.getAccount());
     } catch (e) {
@@ -125,6 +126,45 @@ export function SignInButton() {
         >
           {busy ? "Waiting…" : "Sign in"}
         </button>
+      </div>
+    );
+  }
+
+  // Passkey and Privy side by side: existing passkey accounts keep their
+  // door, and a wallet or email is the other one.
+  if (walletKind() === "both") {
+    return (
+      <div className="account">
+        {error && <span className="error-note">{error}</span>}
+        <button
+          type="button"
+          className="btn"
+          onClick={() => void signIn("privy")}
+          disabled={busy}
+          data-testid="sign-in"
+        >
+          {busy ? "Waiting…" : "Continue with wallet or email"}
+        </button>
+        {returning ? (
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm"
+            onClick={() => void signIn("passkey")}
+            disabled={busy}
+          >
+            {busy ? WORKING : "Use passkey"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm"
+            onClick={() => void signUp("passkey")}
+            disabled={busy}
+            data-testid="signup-submit"
+          >
+            {busy ? WORKING : "Create passkey account"}
+          </button>
+        )}
       </div>
     );
   }

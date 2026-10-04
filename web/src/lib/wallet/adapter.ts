@@ -1,5 +1,8 @@
 import type { Abi, Address, Hash, Hex } from "viem";
 
+/** The ways a wallet can be entered when more than one is offered. */
+export type WalletMethod = "passkey" | "privy";
+
 export type WriteParams = {
   address: Address;
   abi: Abi;
@@ -70,4 +73,17 @@ export interface WalletAdapter {
 
   /** Subscribes to lock state; returns an unsubscribe function. */
   onLockChange(cb: (unlocked: boolean) => void): () => void;
+
+  /**
+   * The methods this wallet offers, when it fronts more than one. Absent
+   * means a single implicit method, which is every adapter except the
+   * passkey-and-Privy one the UI has to present a choice for.
+   */
+  methods?(): WalletMethod[];
+
+  /** Signs in through a named method. Only on multi-method wallets. */
+  signInWith?(method: WalletMethod): Promise<void>;
+
+  /** Creates an account through a named method. Only on multi-method wallets. */
+  createAccountWith?(method: WalletMethod): Promise<void>;
 }

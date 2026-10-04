@@ -1,19 +1,22 @@
 /**
- * Privy is an optional wallet, selected with NEXT_PUBLIC_WALLET=privy.
+ * Privy is an optional wallet, selected with NEXT_PUBLIC_WALLET=privy or
+ * `both` (passkey and Privy side by side).
  *
  * External wallets connect as-is; email sign-in gets a Privy embedded wallet
  * because there is nothing else to sign with. The passkey wallet stays the
  * default so existing accounts and their RP id scope are untouched.
  */
-export type WalletKind = "mera" | "burner" | "privy";
+export type WalletKind = "mera" | "burner" | "privy" | "both";
 
 export function walletKind(): WalletKind {
   const kind = process.env.NEXT_PUBLIC_WALLET?.trim().toLowerCase();
-  return kind === "burner" || kind === "privy" ? kind : "mera";
+  return kind === "burner" || kind === "privy" || kind === "both" ? kind : "mera";
 }
 
+/** Whether the Privy provider should mount at all. */
 export function privyEnabled(): boolean {
-  return walletKind() === "privy";
+  const kind = walletKind();
+  return kind === "privy" || kind === "both";
 }
 
 /** The Privy app id from the dashboard. Empty disables the provider. */

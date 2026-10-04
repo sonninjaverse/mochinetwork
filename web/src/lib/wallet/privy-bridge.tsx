@@ -2,7 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import type { ConnectedWallet } from "@privy-io/react-auth";
-import { useActiveWallet, useLogin, usePrivy, useWallets } from "@privy-io/react-auth";
+import {
+  useActiveWallet,
+  useLogin,
+  useModalStatus,
+  usePrivy,
+  useWallets,
+} from "@privy-io/react-auth";
 import { createWalletClient, custom, type Address, type Hash } from "viem";
 import { appChain } from "@/lib/chain/config";
 import type { SendParams, WriteParams } from "./adapter";
@@ -44,6 +50,23 @@ async function clientFor(wallet: ConnectedWallet) {
 }
 
 /**
+ * Privy error codes that mean the reader backed out, not that anything broke.
+ * Closing the modal is a decision, and answering it in red tells someone
+ * their own choice went wrong.
+ */
+const CANCEL_CODES = new Set([
+  "exited_auth_flow",
+  "exited_link_flow",
+  "exited_update_flow",
+  "user_exited_set_password_flow",
+  "oauth_user_denied",
+]);
+
+function cancelled(): Error {
+  return Object.assign(new Error("Sign-in cancelled."), { name: "AbortError" });
+}
+
+/**
  * Bridges Privy's hooks to the plain adapter the rest of the app uses.
  *
  * Renders nothing and never calls a hook outside PrivyProvider. The pending
@@ -54,6 +77,7 @@ export function PrivyWalletBridge() {
   const { ready: authReady, authenticated, logout } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { wallet: activeWallet } = useActiveWallet();
+  const { isOpen } = useModalStatus();
   const activeEthereum = activeWallet?.type === "ethereum" ? activeWallet : undefined;
   const wallet = selectedWallet(activeEthereum, wallets);
 
@@ -68,10 +92,22 @@ export function PrivyWalletBridge() {
       pending.current = null;
     },
     onError: (error) => {
-      pending.current?.reject(new Error(String(error)));
+      const code = String(error);
+      pending.current?.reject(CANCEL_CODES.has(code) ? cancelled() : new Error(code));
       pending.current = null;
     },
   });
+
+  // A modal that closes without onComplete or onError is still a choice to
+  // stop; without this the button waits forever.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !isOpen && pending.current) {
+      pending.current.reject(cancelled());
+      pending.current = null;
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     if (!authReady || !walletsReady) return;

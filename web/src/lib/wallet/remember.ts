@@ -25,6 +25,38 @@ const KEY = "mochi-address";
  */
 const HAS_PASSKEY = "mochi-has-passkey";
 
+/**
+ * Which wallet method the last sign-in used, so a reload knows whether to
+ * restore a passkey or a Privy session. The address alone cannot say: both
+ * methods share the address key below.
+ */
+const METHOD = "mochi-wallet-method";
+
+export function rememberMethod(method: "passkey" | "privy"): void {
+  try {
+    window.localStorage.setItem(METHOD, method);
+  } catch {
+    /* a private window; the reload just falls back to passkey */
+  }
+}
+
+export function forgetMethod(): void {
+  try {
+    window.localStorage.removeItem(METHOD);
+  } catch {
+    /* nothing to do */
+  }
+}
+
+export function recallMethod(): "passkey" | "privy" | null {
+  try {
+    const value = window.localStorage.getItem(METHOD);
+    return value === "passkey" || value === "privy" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export function rememberPasskey(): void {
   try {
     window.localStorage.setItem(HAS_PASSKEY, "1");
