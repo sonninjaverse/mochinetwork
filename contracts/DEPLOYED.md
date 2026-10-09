@@ -33,6 +33,16 @@ bytes, `mediaURI` at 256, metadata at 8 KB, and a handle's alphabet.
 Default feed slot: HotFeed. BestFeed takes the second slot.
 Four algorithms registered. No contract has an admin function.
 
+The one-claim tMON faucet is deployed separately, at block **69449856**
+(2026-10-09), verified on Sourcify the same way:
+
+| Contract | Address | Deployed |
+|---|---|---|
+| Faucet | `0x27292dd0e94b68d5d0567fd26081bac030502925` | 69449856 |
+
+It pays 3 tMON once per wallet and was funded with 30 tMON (ten first
+claims). Design and refill instructions: [docs/faucet.md](docs/faucet.md).
+
 ### Karma and vote weight are on chain
 
 `PostRegistry.karmaOf(account)` is the signed sum of weighted votes an account

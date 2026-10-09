@@ -70,6 +70,7 @@ own output and an invariant that a ranking contract never reverts.
 | `src/interfaces/IFeedAlgorithm.sol` | The contract every algorithm implements |
 | `src/` | The registries: identity, posts and karma, communities, algorithms |
 | `src/CommunityRegistry.sol` | Community names and public membership; [design](docs/communities.md) |
+| `src/Faucet.sol` | One-claim tMON faucet for new wallets; [design](docs/faucet.md) |
 | `src/algorithms/` | Shipped ranking algorithms, four of them Reddit's |
 | `src/examples/` | A standalone example to copy |
 | `docs/` | How the feed works, and how to write your own algorithm |
