@@ -53,6 +53,7 @@ curl http://localhost:8787/health
 | POST | `/push/prefs` | JSON `address`, `prefs` | `{ ok }` |
 | POST | `/push/unsubscribe` | JSON `endpoint` | `{ ok }` |
 | POST | `/media` | multipart `file` | `{ cid, uri }` |
+| POST | `/drip` | JSON `address` | `{ ok, already \| funded \| txHash }` |
 
 ## `/health`
 
@@ -351,3 +352,13 @@ the indexer. Without them push stays off and only the bell works.
 `POST /media` accepts multipart with a `file` field (PNG, JPEG, WebP, or GIF, at most
 5 MB) and returns `{ "cid": "bafy…", "uri": "ipfs://bafy…" }`. Only the CID goes
 on-chain; the image bytes live on IPFS.
+
+## Starter drip
+
+`POST /drip` with `{ "address": "0x…" }` sends 0.05 MON from the indexer's drip
+wallet so a brand-new account can pay gas for its first transaction — usually the
+faucet claim. One drip per address, tracked in the local database; an address that
+already holds at least 0.02 MON is left alone, and a replay answers
+`{ "ok": true, "already": true }`. Needs `DRIP_PRIVATE_KEY` on the indexer
+(`DRIP_AMOUNT` overrides the size); without it the route answers 503. Per-caller
+(6/minute) and global (60/hour) windows cap abuse.

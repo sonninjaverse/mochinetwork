@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { formatEther } from "viem";
 import type { Address } from "viem";
@@ -8,6 +8,7 @@ import { publicClient } from "@social/lib/chain";
 import { fetchPosts, type IndexedPost } from "@social/lib/indexer";
 import { useScrollRestore } from "@social/lib/nav-state";
 import { onSavedChange, savedIds } from "@social/lib/saved";
+import { requestStarterMon, STARTER_EVENT } from "@social/lib/starter";
 import {
   describeWeight,
   loadProfile,
@@ -142,6 +143,33 @@ export function ProfileView() {
   }, [address, isYou]);
 
   useEffect(refreshBalance, [refreshBalance]);
+
+  // The sign-up drip is a transaction; when it lands, the number here should
+  // stop reading zero without a reload.
+  useEffect(() => {
+    const onStarter = () => refreshBalance();
+    window.addEventListener(STARTER_EVENT, onStarter);
+    return () => window.removeEventListener(STARTER_EVENT, onStarter);
+  }, [refreshBalance]);
+
+  /**
+   * Accounts made before the starter drip existed still have none. Asking
+   * once per visit, only when the balance is exactly zero, covers them: the
+   * indexer answers at once for an address it has already dripped, and a
+   * wallet that spent everything does not get a second helping.
+   */
+  const askedStarter = useRef(false);
+  useEffect(() => {
+    if (!isYou || !address || balance !== 0n || askedStarter.current) return;
+    askedStarter.current = true;
+    void requestStarterMon(address)
+      .then(() => {
+        // Give the drip a block or two, then show what arrived.
+        window.setTimeout(refreshBalance, 2000);
+        window.setTimeout(refreshBalance, 6000);
+      })
+      .catch(() => {});
+  }, [isYou, address, balance, refreshBalance]);
 
   // Saved posts live on this device, so they are only ever this reader's, and
   // only fetched when the tab is opened.

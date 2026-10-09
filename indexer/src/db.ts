@@ -95,6 +95,16 @@ export function openDb(path: string): Db {
 
     CREATE INDEX IF NOT EXISTS idx_push_address ON push_subscriptions (address);
 
+    -- Starter MON sent to new accounts so their first transaction (often the
+    -- faucet claim itself) can pay for gas. One row per address: the drip is
+    -- once, like the claim. Local application state, kept on rebuild.
+    CREATE TABLE IF NOT EXISTS starter_drips (
+      address    TEXT PRIMARY KEY,
+      tx_hash    TEXT NOT NULL,
+      amount     TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS cursor (
       id         INTEGER PRIMARY KEY CHECK (id = 1),
       last_block INTEGER NOT NULL

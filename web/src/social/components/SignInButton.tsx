@@ -9,6 +9,7 @@ import type { WalletMethod } from "@/lib/wallet";
 import { explainError, isUserCancelled } from "@/lib/wallet/errors";
 import { hasPasskeyHere } from "@/lib/wallet/remember";
 import { confirmInviteAccount } from "@social/lib/invites";
+import { requestStarterMon, STARTER_EVENT } from "@social/lib/starter";
 import { Modal } from "./Modal";
 
 /// The whole of signing up, now that nothing is sent on chain to do it.
@@ -58,12 +59,12 @@ export function SignInButton() {
   }, []);
 
   /**
-   * Makes the passkey, and stops there.
+   * Makes the passkey, and asks for a starter drip.
    *
-   * No gas is sent. An account that quietly arrives funded would hide the one
-   * thing a new reader has to learn: that posting and voting here cost
-   * something. MON is deposited deliberately, from a wallet the reader
-   * controls.
+   * A new wallet has to pay gas before it can do anything, and the first
+   * thing anyone does is a transaction — claiming from the faucet is one.
+   * The indexer sends 0.05 MON once per address so that door is open; the
+   * profile shows it as soon as the block lands.
    */
   async function signUp(method: WalletMethod = "passkey") {
     setError(null);
@@ -73,6 +74,11 @@ export function SignInButton() {
       await (wallet.createAccountWith?.(method) ?? wallet.createAccount());
       const created = await wallet.getAccount();
       await confirmInviteAccount();
+      // Not awaited: signing up must not wait on the drip, and a refusal
+      // (already sent, float empty, offline) is not a sign-up failure.
+      void requestStarterMon(created)
+        .then(() => window.dispatchEvent(new Event(STARTER_EVENT)))
+        .catch(() => {});
       setAddress(created);
       setConfirming(false);
       // Onto the profile, where the username and the wallet both are. Client

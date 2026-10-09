@@ -5,6 +5,7 @@ import type { Db } from "./db";
 import { gateFromEnv, gateMiddleware, gateRoutes } from "./gate";
 import { pushConfigured, removeSubscription, saveSubscription, syncPrefs } from "./push";
 import { mediaRoutes } from "./media";
+import { dripRoutes } from "./drip";
 import { getCursor, HEARTBEAT_MS, type TailStatus } from "./ingest";
 import {
   activity,
@@ -271,6 +272,10 @@ export function createServer(
 
   // Uploads need only a Pinata key, not the chain, so they mount regardless.
   app.route("/", mediaRoutes());
+
+  // Starter MON for new wallets. Behind the gate like everything else, so a
+  // drip is only ever offered to someone who got in.
+  app.route("/", dripRoutes(db));
 
   return app;
 }
