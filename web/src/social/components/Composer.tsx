@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { stringToHex, type Address } from "viem";
 import { replyToPost } from "@social/lib/actions";
 import { CONTRACTS, postRegistryAbi } from "@social/lib/contracts";
+import { clearDraft, readDraft, writeDraft } from "@social/lib/drafts";
 import { IMAGE_TYPES, uploadImage } from "@social/lib/media";
 import { getWallet } from "@/lib/wallet";
 import { isUserCancelled } from "@/lib/wallet/errors";
@@ -59,6 +60,8 @@ export function Composer({
   const [media, setMedia] = useState<{ uri: string; preview: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const picker = useRef<HTMLInputElement | null>(null);
+  // Counts attachments so one removed mid-flight cannot land afterwards.
+  const uploadRun = useRef(0);
 
   /**
    * Folded away until asked for.
@@ -70,6 +73,25 @@ export function Composer({
    */
   const folds = Boolean(author) && parentId !== undefined;
   const open = !folds || unfolded || text.length > 0 || media !== null || busy;
+
+  // Where this composer's draft lives: one box per reply target, one for the
+  // top-level feed of each community. A draft restored into the box is what
+  // reopens a folded reply, which is the point — it is still unsent.
+  const scope =
+    parentId !== undefined ? `reply:${parentId}` : community ? `post:m/${community}` : "post";
+
+  const restored = useRef(false);
+  useEffect(() => {
+    setText((current) =>
+      current.length === 0 ? readDraft(scope).slice(0, MAX_LENGTH) : current,
+    );
+    restored.current = true;
+  }, [scope]);
+
+  useEffect(() => {
+    if (!restored.current) return;
+    writeDraft(scope, text);
+  }, [scope, text]);
 
   useEffect(() => {
     if (unfolded) box.current?.focus();
@@ -101,20 +123,31 @@ export function Composer({
 
   async function attach(file: File) {
     setError(null);
+    // The preview is shown before the upload starts, so the reader sees what
+    // they picked immediately instead of waiting on a pinning service.
+    const preview = URL.createObjectURL(file);
+    const run = ++uploadRun.current;
+    setMedia({ uri: "", preview });
     setUploading(true);
     try {
       const uri = await uploadImage(file);
-      setMedia({ uri, preview: URL.createObjectURL(file) });
+      if (uploadRun.current !== run) return;
+      setMedia({ uri, preview });
     } catch (e) {
+      if (uploadRun.current !== run) return;
+      URL.revokeObjectURL(preview);
+      setMedia(null);
       setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
-      setUploading(false);
+      if (uploadRun.current === run) setUploading(false);
     }
   }
 
   function removeImage() {
+    uploadRun.current += 1;
     if (media) URL.revokeObjectURL(media.preview);
     setMedia(null);
+    setUploading(false);
     if (picker.current) picker.current.value = "";
   }
 
@@ -145,6 +178,7 @@ export function Composer({
         });
       }
       setText("");
+      clearDraft(scope);
       removeImage();
       setUnfolded(false);
       // Hand the text back so the feed can show it immediately. The indexer

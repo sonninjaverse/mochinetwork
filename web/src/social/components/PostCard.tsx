@@ -24,6 +24,47 @@ function ago(createdAt: number): string {
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 /**
+ * The image on a post, holding its place while the gateway answers.
+ *
+ * An empty gap that filled in whenever the network got around to it read as a
+ * broken card; the shell reserves the room and shimmers instead, then steps
+ * out of the way once the bytes are there. A cache hit has already finished
+ * by the time React is listening, so `complete` is checked directly.
+ */
+function PostMedia({ uri }: { uri: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const image = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    const node = image.current;
+    if (!node?.complete) return;
+    if (node.naturalWidth > 0) setLoaded(true);
+    else setFailed(true);
+  }, []);
+
+  if (failed) return <p className="post-media-error">That image did not load.</p>;
+
+  return (
+    <span className={`post-media-shell${loaded ? " is-loaded" : ""}`}>
+      {/* Not next/image: the host is a gateway chosen at runtime, and the
+          optimiser would need every one allow-listed at build time. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={image}
+        className={`post-media${loaded ? " is-loaded" : " img-hidden"}`}
+        src={resolveMedia(uri)}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+      />
+    </span>
+  );
+}
+
+/**
  * One post.
  *
  * Takes the viewer rather than a signed-in flag. The flag could disagree with
@@ -187,12 +228,7 @@ export function PostCard({
           item.community && (!item.parentId || item.parentId === "0") ? stripTag(item.text, item.community) : item.text
         }</p>}
 
-        {item.mediaURI && (
-          // Not next/image: the host is a gateway chosen at runtime, and the
-          // optimiser would need every one allow-listed at build time.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="post-media" src={resolveMedia(item.mediaURI)} alt="" loading="lazy" />
-        )}
+        {item.mediaURI && <PostMedia uri={item.mediaURI} />}
 
         <footer className="post-foot">
           <span className="votes">
