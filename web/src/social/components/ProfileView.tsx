@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { formatEther } from "viem";
 import type { Address } from "viem";
 import { publicClient } from "@social/lib/chain";
 import { fetchPosts, type IndexedPost } from "@social/lib/indexer";
+import { useScrollRestore } from "@social/lib/nav-state";
 import { onSavedChange, savedIds } from "@social/lib/saved";
 import {
   describeWeight,
@@ -19,11 +21,13 @@ import { getWallet } from "@/lib/wallet";
 import { BRAND } from "@/lib/brand";
 import { Avatar } from "./Avatar";
 import { BackLink } from "./BackLink";
+import { FaucetButton } from "./FaucetButton";
 import { HandleForm } from "./HandleForm";
 import { Masthead } from "./Masthead";
 import { Modal } from "./Modal";
 import { Sidebar } from "./Sidebar";
 import { PostCard } from "./PostCard";
+import { DelayedSkeleton, ProfileSkeleton } from "./Skeletons";
 import { WalletActions } from "./WalletActions";
 import { InviteButton } from "./InviteButton";
 import { endInviteSession } from "@social/lib/invites";
@@ -43,6 +47,7 @@ function formatMon(wei: bigint): string {
 }
 
 export function ProfileView() {
+  const pathname = usePathname();
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [address, setAddress] = useState<Address | null>(null);
@@ -156,12 +161,35 @@ export function ProfileView() {
     return onSavedChange(load);
   }, [tab, isYou, me]);
 
+  // Coming back to a profile should land where it was left, not at the top.
+  useScrollRestore(pathname, profile !== null || missing);
+
   if (missing) {
     return (
       <main className="shell">
         <Masthead />
         <BackLink />
         <p className="state">No account here — the name or address does not exist.</p>
+      </main>
+    );
+  }
+
+  // Before the profile has arrived. The header used to render with an
+  // ellipsis for a name and em dashes for the numbers, then fill in — the
+  // skeleton is the same shape without the flicker.
+  if (!profile) {
+    return (
+      <main className="shell">
+        <Masthead />
+        <div className="layout">
+          <Sidebar />
+          <div className="layout-main">
+            <BackLink />
+            <DelayedSkeleton>
+              <ProfileSkeleton />
+            </DelayedSkeleton>
+          </div>
+        </div>
       </main>
     );
   }
@@ -194,6 +222,7 @@ export function ProfileView() {
                 </span>
               )}
               <WalletActions address={address} balance={balance} onChanged={refreshBalance} />
+              <FaucetButton address={address} />
               <InviteButton />
               <button
                 className="btn btn-quiet btn-sm"

@@ -5,6 +5,9 @@ export const CONTRACTS = {
   postRegistry: process.env.NEXT_PUBLIC_POST_REGISTRY as Address,
   algorithmRegistry: process.env.NEXT_PUBLIC_ALGORITHM_REGISTRY as Address,
   communityRegistry: process.env.NEXT_PUBLIC_COMMUNITY_REGISTRY as Address | undefined,
+  // Absent until the faucet is deployed and funded; the claim button hides
+  // itself rather than offering a transaction that cannot work.
+  faucet: process.env.NEXT_PUBLIC_FAUCET as Address | undefined,
 } as const;
 
 /// Hand-written rather than generated: these are all the app calls, and a
@@ -194,4 +197,33 @@ export const algorithmRegistryAbi = [
 
 export const SLOT_FEED = 0;
 export const SLOT_EXPLORE = 1;
+
+/// The one-claim tMON faucet (contracts/src/Faucet.sol). `claimed` is the
+/// eligibility rule itself, read from chain rather than guessed by the client.
+export const faucetAbi = [
+  {
+    type: "function",
+    name: "claim",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "claimed",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "CLAIM_AMOUNT",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  { type: "error", name: "AlreadyClaimed", inputs: [] },
+  { type: "error", name: "Empty", inputs: [] },
+  { type: "error", name: "TransferFailed", inputs: [] },
+] as const;
 

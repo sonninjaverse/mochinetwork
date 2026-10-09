@@ -49,7 +49,7 @@ export function HandleForm({ onClaimed }: { onClaimed: (handle: string) => void 
     const address = getWallet().rememberedAddress();
     if (address && (await publicClient.getBalance({ address })) === 0n) {
       setState("idle");
-      return setError("You need some MON first — deposit from your wallet.");
+      return setError("You need some MON first — claim it from the faucet on your profile.");
     }
 
     setState("sending");
