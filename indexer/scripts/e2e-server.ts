@@ -118,11 +118,12 @@ async function main() {
 
   // Filler, so a feed page is taller than a viewport and the scroll tests
   // have somewhere to scroll to. Into the community on purpose: /popular only
-  // considers community posts. Nothing asserts a specific row, and the filler
-  // carries no votes, so the ranking tests keep their winners; each gets its
-  // own timestamp so a chronological sort is stable.
+  // considers community posts. Ten keeps every fixture post inside the first
+  // mounted page of twenty five, so tests that look for a specific post still
+  // find it without scrolling. Each gets its own timestamp so a chronological
+  // sort is stable.
   const monad = stringToHex("monad", { size: 32 });
-  for (let i = 1; i <= 32; i++) {
+  for (let i = 1; i <= 10; i++) {
     await write("PostRegistry", posts, "postToCommunity", [monad, `Filler post ${i}`, ""]);
     await client.request({ method: "evm_increaseTime" as never, params: [1] as never });
   }
