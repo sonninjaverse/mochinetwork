@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { resolveMedia } from "@social/lib/media";
 import { permalink, permalinkPath, profilePath } from "@social/lib/permalink";
-import { isSaved, onSavedChange, toggleSaved } from "@social/lib/saved";
+import { isSaved, onSavedChange, savesLocked, toggleSaved, unlockSaves } from "@social/lib/saved";
 import { netVotes, type Vote } from "@social/lib/votes";
 import { stripTag } from "@social/lib/community";
 import { Avatar } from "./Avatar";
@@ -173,6 +173,24 @@ export function PostCard({
   }
 
   /**
+   * Saving, with one detour. On a locked vault the first tap asks the passkey
+   * and then reveals what was already saved, so the heart never lies about a
+   * post the reader bookmarked on another day. Only the second tap toggles.
+   */
+  async function save() {
+    if (savesLocked()) {
+      try {
+        await unlockSaves();
+      } catch {
+        // Dismissing the passkey is an answer, not an error.
+        return;
+      }
+      if (isSaved(item.id)) return;
+    }
+    void toggleSaved(item.id);
+  }
+
+  /**
    * Opening a post should be clicking the post.
    *
    * It was reachable only through the little speech bubble in the footer,
@@ -283,7 +301,7 @@ export function PostCard({
               chain — see lib/saved.ts. */}
           <button
             className={`act act-icon${saved ? " is-on" : ""}`}
-            onClick={() => toggleSaved(item.id)}
+            onClick={() => void save()}
             title={saved ? "Saved" : "Save"}
             aria-label={saved ? "Remove from saved" : "Save this post"}
             data-testid="save-button"

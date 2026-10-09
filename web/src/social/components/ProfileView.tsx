@@ -7,7 +7,7 @@ import type { Address } from "viem";
 import { publicClient } from "@social/lib/chain";
 import { fetchPosts, type IndexedPost } from "@social/lib/indexer";
 import { useScrollRestore } from "@social/lib/nav-state";
-import { onSavedChange, savedIds } from "@social/lib/saved";
+import { onSavedChange, savedIds, savesLocked, unlockSaves } from "@social/lib/saved";
 import { requestStarterMon, STARTER_EVENT } from "@social/lib/starter";
 import {
   describeWeight,
@@ -172,10 +172,13 @@ export function ProfileView() {
   }, [isYou, address, balance, refreshBalance]);
 
   // Saved posts live on this device, so they are only ever this reader's, and
-  // only fetched when the tab is opened.
+  // only fetched when the tab is opened. When the vault is sealed they stay
+  // behind the passkey, and the tab offers the one prompt that opens it.
+  const [savedLocked, setSavedLocked] = useState(false);
   useEffect(() => {
     if (tab !== "saved" || !isYou) return;
     const load = () => {
+      setSavedLocked(savesLocked());
       const ids = savedIds();
       if (ids.length === 0) {
         setSaved([]);
@@ -392,15 +395,30 @@ export function ProfileView() {
         )}
       </div>
 
-      {(() => {
-        const list = tab === "posts" ? posts : tab === "comments" ? comments : saved;
-        if (list.length === 0) {
-          const empty =
-            tab === "posts" ? "No posts yet." : tab === "comments" ? "No comments yet." : "Nothing saved yet.";
-          return <p className="state">{empty}</p>;
-        }
-        return list.map((p) => <PostCard key={p.id} item={{ ...p, score: 0n }} viewer={me} />);
-      })()}
+      {tab === "saved" && savedLocked ? (
+        <div className="state">
+          <p>Saved posts are encrypted with your passkey on this device.</p>
+          <p style={{ marginTop: 10 }}>
+            <button
+              className="btn btn-sm"
+              onClick={() => void unlockSaves().catch(() => {})}
+              data-testid="unlock-saves"
+            >
+              Unlock saved posts
+            </button>
+          </p>
+        </div>
+      ) : (
+        (() => {
+          const list = tab === "posts" ? posts : tab === "comments" ? comments : saved;
+          if (list.length === 0) {
+            const empty =
+              tab === "posts" ? "No posts yet." : tab === "comments" ? "No comments yet." : "Nothing saved yet.";
+            return <p className="state">{empty}</p>;
+          }
+          return list.map((p) => <PostCard key={p.id} item={{ ...p, score: 0n }} viewer={me} />);
+        })()
+      )}
         </div>
       </div>
     </main>

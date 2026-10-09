@@ -25,6 +25,12 @@ import type { LocalAccount } from "viem";
 /// silently produces a different account for every existing user, so they are
 /// fixed here and must never change after launch.
 export const PRF_SALT = new Uint8Array(32).fill(7);
+
+/// The second namespace, and the reason the bounty calls this one passkey with
+/// many keys: same credential, different salt, a key that never signs anything
+/// on chain. The saved posts are encrypted with it on this device.
+export const SAVES_PRF_SALT = new Uint8Array(32).fill(9);
+
 const RP_NAME = "Mochi Network";
 
 /**
@@ -85,4 +91,17 @@ export async function loadAccount(): Promise<MeraSession> {
   });
   const session = sessionFromPrf(prfOutput);
   return { session, account: toViemAccount(session) };
+}
+
+/**
+ * The non-account key: a passkey prompt, a different PRF namespace, and an
+ * AES-GCM key used only to encrypt this device's saved posts. It cannot sign
+ * a transaction, and nothing about it derives from the wallet key.
+ */
+export async function deriveSavesKey(): Promise<CryptoKey> {
+  const { prfOutput } = await getPasskeyPrfOutput({
+    rpId: rpId(),
+    prfSalt: SAVES_PRF_SALT,
+  });
+  return crypto.subtle.importKey("raw", prfOutput, "AES-GCM", false, ["encrypt", "decrypt"]);
 }

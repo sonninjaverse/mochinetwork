@@ -22,6 +22,8 @@ const walletMock = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/wallet", () => ({
+  // No passkey in a unit test, which is also the plaintext saved-posts path.
+  walletKind: () => "burner",
   getWallet: () => ({
     rememberedAddress: () => walletMock.address ?? null,
     isUnlocked: () => Boolean(walletMock.address),
