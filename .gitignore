@@ -45,3 +45,4 @@ playwright-report/
 *.sqlite3
 coverage/
 .pnpm-store/
+SUBMISSION.md
