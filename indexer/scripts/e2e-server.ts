@@ -116,6 +116,17 @@ async function main() {
   // tree has a second level to render.
   await write("PostRegistry", posts, "reply", [3, "A nested reply to the reply", ""], bob);
 
+  // Filler, so a feed page is taller than a viewport and the scroll tests
+  // have somewhere to scroll to. Into the community on purpose: /popular only
+  // considers community posts. Nothing asserts a specific row, and the filler
+  // carries no votes, so the ranking tests keep their winners; each gets its
+  // own timestamp so a chronological sort is stable.
+  const monad = stringToHex("monad", { size: 32 });
+  for (let i = 1; i <= 32; i++) {
+    await write("PostRegistry", posts, "postToCommunity", [monad, `Filler post ${i}`, ""]);
+    await client.request({ method: "evm_increaseTime" as never, params: [1] as never });
+  }
+
   const db = openDb(":memory:");
   const addresses = [identity, posts, community];
   let indexed = await client.getBlockNumber({ cacheTime: 0 });
@@ -147,6 +158,9 @@ async function main() {
     NEXT_PUBLIC_IDENTITY_REGISTRY: identity, NEXT_PUBLIC_POST_REGISTRY: posts,
     NEXT_PUBLIC_ALGORITHM_REGISTRY: registry, NEXT_PUBLIC_COMMUNITY_REGISTRY: community,
     NEXT_PUBLIC_INDEXER_URL: indexerUrl, NEXT_PUBLIC_WALLET: invites ? "mera" : "burner",
+    // The fixture has no faucet; pointing at the deployed one would show a
+    // claim button against a chain without it.
+    NEXT_PUBLIC_FAUCET: "",
     GATE_SECRET: process.env.GATE_SECRET,
   };
   await run("pnpm", ["build"], web, env);

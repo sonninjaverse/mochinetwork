@@ -2,7 +2,7 @@
 
 import type { Address } from "viem";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isValidName } from "@social/lib/community";
 import { SLOT_FEED } from "@social/lib/contracts";
 import { fetchCommunity, type CommunitySummary } from "@social/lib/indexer";
@@ -14,6 +14,8 @@ import { CreatePost } from "./CreatePost";
 import { Feed } from "./Feed";
 import { FeedControl } from "./FeedControl";
 import { Masthead } from "./Masthead";
+import { PullToRefresh } from "./PullToRefresh";
+import { CommunitySkeleton, DelayedSkeleton } from "./Skeletons";
 import { Sidebar } from "./Sidebar";
 
 /** One community, with the Posts/About split every subreddit has. */
@@ -26,8 +28,25 @@ export function CommunityView() {
   const [algorithm, setAlgorithm] = useState<Address | null>(null);
   const [pending, setPending] = useState<string[]>([]);
   const [tab, setTab] = useState<"posts" | "about">("posts");
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const waiters = useRef<Array<() => void>>([]);
 
   const refresh = () => setRevision((n) => n + 1);
+
+  // A refresh here is two things: the header, which is a plain fetch, and the
+  // feed, which knows when it has settled. The indicator follows both.
+  const requestRefresh = useCallback(() => {
+    setRefreshing(true);
+    setRevision((n) => n + 1);
+    setRefreshToken((t) => t + 1);
+    return new Promise<void>((resolve) => waiters.current.push(resolve));
+  }, []);
+
+  const settleRefresh = useCallback(() => {
+    setRefreshing(false);
+    for (const done of waiters.current.splice(0)) done();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -68,7 +87,9 @@ export function CommunityView() {
           </p>
 
       {loading ? (
-        <p className="state">Loading community…</p>
+        <DelayedSkeleton>
+          <CommunitySkeleton />
+        </DelayedSkeleton>
       ) : error ? (
         <p className="state" role="alert">
           {error} <button className="btn btn-sm" onClick={refresh}>Try again</button>
@@ -111,7 +132,7 @@ export function CommunityView() {
           {tab === "about" ? (
             <CommunityAbout community={community} />
           ) : (
-            <>
+            <PullToRefresh onRefresh={requestRefresh}>
               {/* No sign-in prompt here: the masthead carries one on every
                   page, and a second one under the tab strip read as a wall. */}
               <div className="feed-tools">
@@ -120,7 +141,8 @@ export function CommunityView() {
                   selected={algorithm}
                   onSelect={setAlgorithm}
                   viewer={viewer}
-                  onRefresh={refresh}
+                  onRefresh={requestRefresh}
+                  refreshing={refreshing}
                 />
                 <CreatePost
                   viewer={viewer}
@@ -132,15 +154,16 @@ export function CommunityView() {
                 />
               </div>
               <Feed
-                key={revision}
                 viewer={viewer}
                 slot={SLOT_FEED}
                 strategy="community"
                 community={community.name}
                 algorithmOverride={algorithm}
                 pending={pending}
+                refreshToken={refreshToken}
+                onRefreshed={settleRefresh}
               />
-            </>
+            </PullToRefresh>
           )}
         </>
       )}

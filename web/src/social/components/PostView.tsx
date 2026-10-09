@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { Address } from "viem";
 import { fetchPosts, fetchThread, type IndexedPost } from "@social/lib/indexer";
+import { useScrollRestore } from "@social/lib/nav-state";
 import { resolveAuthorPost, resolveHandlePost } from "@social/lib/permalink";
 import { parsePath } from "@social/lib/route";
 import { getWallet } from "@/lib/wallet";
@@ -12,16 +14,19 @@ import { CommentTree } from "./CommentThread";
 import { Composer } from "./Composer";
 import { Masthead } from "./Masthead";
 import { PendingPost } from "./PendingPost";
+import { DelayedSkeleton, PostSkeleton, ThreadSkeleton } from "./Skeletons";
 import { Sidebar } from "./Sidebar";
 import { PostCard } from "./PostCard";
 
 /** One post, at its own address. */
 export function PostView() {
+  const pathname = usePathname();
   const [id, setId] = useState<string | null>(null);
   const [post, setPost] = useState<IndexedPost | null>(null);
   const [viewer, setViewer] = useState<Address | null>(null);
   const [missing, setMissing] = useState(false);
   const [replies, setReplies] = useState<IndexedPost[]>([]);
+  const [repliesReady, setRepliesReady] = useState(false);
   const [sort, setSort] = useState<"best" | "new">("best");
   const [parent, setParent] = useState<IndexedPost | null>(null);
   const [pending, setPending] = useState<string[]>([]);
@@ -76,6 +81,7 @@ export function PostView() {
     if (!id) return;
     const ids = await fetchThread(id);
     setReplies(ids.length ? await fetchPosts(ids, viewer ?? undefined) : []);
+    setRepliesReady(true);
   }, [id, viewer]);
 
   useEffect(() => {
@@ -100,6 +106,9 @@ export function PostView() {
     const timer = setInterval(() => void loadReplies(), 4000);
     return () => clearInterval(timer);
   }, [unconfirmed.length, loadReplies]);
+
+  // A long thread left mid-read should come back mid-read.
+  useScrollRestore(pathname, post !== null || missing);
 
   if (missing) {
     return (
@@ -137,7 +146,9 @@ export function PostView() {
           <PostCard item={{ ...post, score: 0n }} viewer={viewer} openable={false} />
         </div>
       ) : (
-        <p className="state">Loading…</p>
+        <DelayedSkeleton>
+          <ThreadSkeleton />
+        </DelayedSkeleton>
       )}
 
       {viewer && post && (
@@ -155,14 +166,21 @@ export function PostView() {
           someone to end it. */}
       {post && (
         <section className="replies">
-          <CommentTree
-            posts={replies}
-            rootId={post.id}
-            viewer={viewer}
-            sort={sort}
-            onSort={setSort}
-            onReplied={loadReplies}
-          />
+          {repliesReady ? (
+            <CommentTree
+              posts={replies}
+              rootId={post.id}
+              viewer={viewer}
+              sort={sort}
+              onSort={setSort}
+              onReplied={loadReplies}
+            />
+          ) : (
+            <DelayedSkeleton>
+              <PostSkeleton />
+              <PostSkeleton />
+            </DelayedSkeleton>
+          )}
 
           {/* Yours, before the indexer has seen it. */}
           {unconfirmed.map((text) => (

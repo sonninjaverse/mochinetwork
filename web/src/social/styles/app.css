@@ -163,7 +163,19 @@
 
 /* Pinch-zoom and double-tap zoom off. Panning stays, so the page still
    scrolls; only the magnifying gestures are dropped. */
-html, body { touch-action: pan-x pan-y; }
+html, body {
+  touch-action: pan-x pan-y;
+  /* The browser's own pull-to-refresh would fire at the same gesture ours
+     does; the page's own version wins. */
+  overscroll-behavior-y: contain;
+}
+
+/* A tap on iOS or Android paints the hit element with a system highlight.
+   On a post row that reads as selecting the whole post when all the reader
+   did was press a vote arrow. The controls carry their own feedback. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* iOS zooms a form field on focus when its text is under 16px. Sixteen is the
    floor, not a size choice. */
@@ -365,6 +377,14 @@ html, body { touch-action: pan-x pan-y; }
   text-align: right;
 }
 
+/* The faucet's receipt, a quieter thing than an error. */
+.faucet-note {
+  max-width: 260px;
+  font-size: 12px;
+  color: var(--text-subtle);
+  text-align: right;
+}
+
 /* ---------------------------------------------------------------- composer */
 
 .composer {
@@ -508,8 +528,13 @@ html, body { touch-action: pan-x pan-y; }
   cursor: pointer;
 }
 
-.post:hover {
-  background: var(--bg-white);
+/* Hover, only where there is a mouse. On a touch screen :hover sticks after
+   a tap: pressing Upvote left the entire post tinted until something else was
+   touched, which is not what a vote looks like anywhere else. */
+@media (hover: hover) {
+  .post:hover {
+    background: var(--bg-white);
+  }
 }
 
 .post.is-pending {
@@ -748,6 +773,44 @@ html, body { touch-action: pan-x pan-y; }
   min-height: 60vh;
 }
 
+/* -------------------------------------------------------- pull to refresh */
+
+.ptr {
+  position: relative;
+}
+
+/* Rides down with the pull; parked just above the top edge when idle. */
+.ptr-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--divider);
+  background: var(--bg-white);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-card);
+  pointer-events: none;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+/* While a finger owns it, the page is the finger's: no animation lag. */
+.ptr-indicator.is-dragging,
+.ptr-content.is-dragging {
+  transition: none;
+}
+
+.ptr-content {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
 /* ---------------------------------------------------------------- skeleton */
 
 .post.post-skeleton {
@@ -788,6 +851,35 @@ html, body { touch-action: pan-x pan-y; }
 .skeleton-line.is-short {
   width: 62%;
   margin-bottom: 0;
+}
+
+/* A profile's shapes: the avatar, the name, the numbers. */
+.skeleton-avatar.is-large {
+  width: 64px;
+  height: 64px;
+}
+
+.skeleton-line.is-title {
+  width: 38%;
+  height: 20px;
+  margin-top: 14px;
+}
+
+.skeleton-line.is-stat {
+  width: 56px;
+  height: 26px;
+}
+
+.profile-stats .skeleton-line {
+  margin-bottom: 0;
+}
+
+/* A media box: wherever the image will land, so the card does not jump when
+   it does. */
+.skeleton-line.is-media {
+  height: 220px;
+  margin-top: 10px;
+  border-radius: 14px;
 }
 
 @keyframes shimmer {
@@ -832,14 +924,26 @@ html, body { touch-action: pan-x pan-y; }
   /* Reply is a link and its neighbours are buttons. Without this it is the
      only control in the row wearing an underline. */
   text-decoration: none;
+  /* A press on a vote arrow should move the arrow, not begin selecting the
+     post around it. Text elsewhere on the card is still selectable. */
+  user-select: none;
+  -webkit-user-select: none;
   transition:
     background var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.act:hover:not(:disabled) {
-  background: var(--accent-soft);
-  color: var(--accent);
+@media (hover: hover) {
+  .act:hover:not(:disabled) {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+}
+
+/* The press itself: small, immediate, and gone on release. */
+.act:active:not(:disabled) {
+  transform: scale(0.9);
 }
 
 .act:disabled {
@@ -886,9 +990,11 @@ html, body { touch-action: pan-x pan-y; }
   gap: 2px;
 }
 
-.act.is-down:hover:not(:disabled) {
-  background: var(--sell);
-  color: var(--text-primary);
+@media (hover: hover) {
+  .act.is-down:hover:not(:disabled) {
+    background: var(--sell);
+    color: var(--text-primary);
+  }
 }
 
 .vote-count {
@@ -943,6 +1049,24 @@ html, body { touch-action: pan-x pan-y; }
 
 .control.is-open .control-chevron {
   transform: rotate(180deg);
+}
+
+/* The sort button and the refresh button, side by side. */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-refresh.is-spinning svg,
+.ptr-indicator.is-busy svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .control-panel {
@@ -1119,6 +1243,49 @@ html, body { touch-action: pan-x pan-y; }
   border-radius: 14px;
   border: 1px solid var(--divider);
   object-fit: cover;
+}
+
+/* A card with an image used to sit empty from the moment it mounted until
+   the gateway answered — a gap where a picture was promised, then a jump.
+   The shell reserves that room and shimmers; once the image is in, the shell
+   stops existing (display: contents) and the picture simply appears. */
+.post-media-shell {
+  display: block;
+  margin-top: 10px;
+  min-height: 180px;
+  border-radius: 14px;
+  border: 1px solid var(--divider);
+  background: linear-gradient(
+    90deg,
+    var(--divider) 25%,
+    var(--accent-soft) 37%,
+    var(--divider) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.post-media-shell.is-loaded {
+  display: contents;
+}
+
+.post-media.img-hidden {
+  opacity: 0;
+}
+
+.post-media.is-loaded {
+  opacity: 1;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+/* A gateway that never answers should say so, not show a broken glyph. */
+.post-media-error {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px dashed var(--divider);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--text-subtle);
 }
 
 .composer-media {

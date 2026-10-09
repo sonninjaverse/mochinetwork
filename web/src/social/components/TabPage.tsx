@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { Feed } from "@social/components/Feed";
 import { FeedControl } from "@social/components/FeedControl";
 import { Masthead } from "@social/components/Masthead";
+import { PullToRefresh } from "@social/components/PullToRefresh";
 import { Sidebar } from "@social/components/Sidebar";
 import type { Strategy } from "@social/lib/indexer";
 import { getWallet } from "@/lib/wallet";
@@ -29,10 +30,16 @@ export function TabPage({
 }) {
   const [viewer, setViewer] = useState<Address | null>(null);
   const [algorithm, setAlgorithm] = useState<Address | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  // Resolved when the feed says its next refresh has settled, so the pull
+  // indicator and the refresh button spin for the work, not for a timer.
+  const waiters = useRef<Array<() => void>>([]);
 
 
-  useEffect(() => {
+  // Read before paint, not after: a signed-in reader should never watch the
+  // sign-in gate flash on a page that is about to show their feed.
+  useLayoutEffect(() => {
     const w = getWallet();
     // The remembered address personalises ranking without a prompt: rank() is
     // a view call, so a feed built for this viewer needs no key at all.
@@ -40,38 +47,51 @@ export function TabPage({
     return w.onLockChange(() => setViewer(getWallet().rememberedAddress()));
   }, []);
 
-  const bump = () => setRefreshKey((k) => k + 1);
+  const requestRefresh = useCallback(() => {
+    setRefreshing(true);
+    setRefreshToken((t) => t + 1);
+    return new Promise<void>((resolve) => waiters.current.push(resolve));
+  }, []);
+
+  const settleRefresh = useCallback(() => {
+    setRefreshing(false);
+    for (const done of waiters.current.splice(0)) done();
+  }, []);
 
   return (
     <main className="shell">
       <Masthead />
 
 
-      <div className="layout">
-        <Sidebar />
+      <PullToRefresh onRefresh={requestRefresh}>
+        <div className="layout">
+          <Sidebar />
 
-        <div className="layout-main">
-          {blurb && <p className="tab-blurb">{blurb}</p>}
+          <div className="layout-main">
+            {blurb && <p className="tab-blurb">{blurb}</p>}
 
-          <div className="feed-tools">
-            <FeedControl
-              slot={slot}
-              selected={algorithm}
-              onSelect={setAlgorithm}
+            <div className="feed-tools">
+              <FeedControl
+                slot={slot}
+                selected={algorithm}
+                onSelect={setAlgorithm}
+                viewer={viewer}
+                onRefresh={requestRefresh}
+                refreshing={refreshing}
+              />
+            </div>
+
+            <Feed
               viewer={viewer}
-              onRefresh={bump}
+              slot={slot}
+              strategy={source}
+              algorithmOverride={algorithm}
+              refreshToken={refreshToken}
+              onRefreshed={settleRefresh}
             />
           </div>
-
-          <Feed
-            key={refreshKey}
-            viewer={viewer}
-            slot={slot}
-            strategy={source}
-            algorithmOverride={algorithm}
-          />
         </div>
-      </div>
+      </PullToRefresh>
     </main>
   );
 }

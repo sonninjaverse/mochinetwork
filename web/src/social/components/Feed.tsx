@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { loadFeed, type FeedItem } from "@social/lib/feed";
 import type { Strategy } from "@social/lib/indexer";
+import { recallFeed, rememberFeed, useScrollRestore } from "@social/lib/nav-state";
 import { watchNewPosts } from "@social/lib/realtime";
 import { NewPostsPill } from "./NewPostsPill";
 import Link from "next/link";
 import { PendingPost } from "./PendingPost";
 import { PostCard } from "./PostCard";
 import { SignInButton } from "./SignInButton";
+import { PostSkeleton } from "./Skeletons";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
@@ -40,6 +42,8 @@ export function Feed({
   strategy,
   community,
   pending = [],
+  refreshToken,
+  onRefreshed,
 }: {
   viewer: Address | null;
   slot: number;
@@ -48,7 +52,23 @@ export function Feed({
   community?: string;
   /** Posts written by this viewer that the indexer may not have yet. */
   pending?: string[];
+  /** Bumped by the page to ask for a refresh without remounting the list. */
+  refreshToken?: number;
+  /** Called after every refresh settles, so the page can stop its spinner. */
+  onRefreshed?: () => void;
 }) {
+  /**
+   * Identifies the feed itself, not the page showing it. Anything that would
+   * change the ordering or the contents is part of the key, so a cache hit
+   * can only ever be the same feed this reader last saw.
+   *
+   * Deliberately not the viewer: on a cold mount the wallet has not been read
+   * yet, so a viewer-keyed cache would always miss exactly when it is needed
+   * — coming back. The background refresh personalises the ordering either
+   * way, and a feed this device saw is a feed this device saw.
+   */
+  const cacheKey = `${strategy}|${slot}|${algorithmOverride ?? ""}|${community ?? ""}`;
+
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -56,6 +76,31 @@ export function Feed({
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [error, setError] = useState(false);
   const sentinel = useRef<HTMLDivElement | null>(null);
+
+  // Which key the items on screen belong to. When it moves, the old list is
+  // another feed's and has to go rather than be updated.
+  const loadedKey = useRef<string | null>(null);
+
+  /**
+   * The feed from last time, if there is one.
+   *
+   * Applied in a layout effect, before the browser paints: a reload should
+   * show the list it was showing, but a server render cannot know about a
+   * browser's cache and painting twice would flicker. The network request
+   * still runs; it updates the list in place instead of replacing it with a
+   * skeleton first.
+   */
+  const booted = useRef(false);
+  useLayoutEffect(() => {
+    if (booted.current) return;
+    booted.current = true;
+    const cached = recallFeed(cacheKey);
+    if (!cached || cached.items.length === 0) return;
+    loadedKey.current = cacheKey;
+    setItems(cached.items as FeedItem[]);
+    setShown(cached.shown);
+    setLoading(false);
+  }, [cacheKey]);
 
   // Drop anything the indexer has caught up on, so a post is never shown twice.
   const indexed = new Set(items.map((i) => i.text));
@@ -77,8 +122,20 @@ export function Feed({
    */
   const run = useRef(0);
 
+  // Kept in a ref so a page passing a new callback every render does not
+  // restart the feed it is watching.
+  const refreshed = useRef(onRefreshed);
+  useEffect(() => {
+    refreshed.current = onRefreshed;
+  });
+
   const refresh = useCallback(async () => {
     const id = ++run.current;
+    if (loadedKey.current !== cacheKey) {
+      loadedKey.current = cacheKey;
+      setItems([]);
+      setShown(PAGE);
+    }
     setLoading(true);
     setError(false);
     // A signed-out visitor still gets a feed; the zero address has no follows
@@ -87,19 +144,38 @@ export function Feed({
     try {
       result = await loadFeed(viewer ?? ZERO, slot, strategy, algorithmOverride ?? undefined, community);
     } catch {
-      if (id === run.current) { setError(true); setLoading(false); }
+      if (id === run.current) {
+        setError(true);
+        setLoading(false);
+        refreshed.current?.();
+      }
       return;
     }
     // A newer request owns the state now, including whether it is still loading.
     if (id !== run.current) return;
     setItems(result.items);
-    setShown(PAGE);
+    // Paging is only reset above, when the list itself changed. A refetch of
+    // the same feed leaves the reader where they were.
     setLoading(false);
-  }, [viewer, slot, strategy, algorithmOverride, community]);
+    refreshed.current?.();
+  }, [viewer, slot, strategy, algorithmOverride, community, cacheKey]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const lastToken = useRef(refreshToken ?? 0);
+  useEffect(() => {
+    if (refreshToken === undefined || refreshToken === lastToken.current) return;
+    lastToken.current = refreshToken;
+    void refresh();
+  }, [refreshToken, refresh]);
+
+  // Whatever is on screen is what coming back should find.
+  useEffect(() => {
+    if (items.length === 0 || loadedKey.current !== cacheKey) return;
+    rememberFeed(cacheKey, { items, shown });
+  }, [cacheKey, items, shown]);
 
   useEffect(() => {
     if (!loading) {
@@ -138,6 +214,9 @@ export function Feed({
 
   const hasMore = shown < items.length;
 
+  // Put the reader back where they were, once there is a list to hold them.
+  useScrollRestore(cacheKey, !loading || items.length > 0);
+
   useEffect(() => {
     const node = sentinel.current;
     if (!node || !hasMore) return;
@@ -165,25 +244,21 @@ export function Feed({
     </div>;
   }
 
-  if (error) return <div className="state" role="alert">
+  // An error only owns the page when there is nothing else to show. A failed
+  // refresh behind a list that is already on screen keeps the list: stale is
+  // better than replaced, and the reader did not ask for this one anyway.
+  if (error && items.length === 0 && unconfirmed.length === 0) return <div className="state" role="alert">
     Could not load the feed. <button className="btn btn-quiet btn-sm" onClick={() => void refresh()}>Try again</button>
   </div>;
 
-  if (loading && unconfirmed.length === 0) {
+  if (loading && items.length === 0 && unconfirmed.length === 0) {
     // Nothing at all until the delay elapses. An empty frame beats a flicker.
     if (!showSkeleton) return <div className="feed-quiet" />;
 
     return (
       <div aria-busy="true" aria-label="Loading the feed">
         {Array.from({ length: 6 }, (_, i) => (
-          <div className="post post-skeleton" key={i}>
-            <span className="skeleton-avatar" />
-            <div className="post-main">
-              <span className="skeleton-line is-head" />
-              <span className="skeleton-line" />
-              <span className="skeleton-line is-short" />
-            </div>
-          </div>
+          <PostSkeleton key={i} />
         ))}
       </div>
     );

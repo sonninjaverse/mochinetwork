@@ -49,12 +49,15 @@ export function FeedControl({
   onSelect,
   viewer,
   onRefresh,
+  refreshing = false,
 }: {
   slot: number;
   selected: Address | null;
   onSelect: (address: Address) => void;
   viewer: Address | null;
   onRefresh: () => void;
+  /** True while a refresh asked for here is still running. */
+  refreshing?: boolean;
 }) {
   const [algos, setAlgos] = useState<AlgorithmInfo[]>([]);
   const [algoError, setAlgoError] = useState(false);
@@ -138,28 +141,45 @@ export function FeedControl({
 
   return (
     <div className={`control${open ? " is-open" : ""}`}>
-      <button
-        className="control-trigger"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        data-testid="feed-control"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
-        </svg>
-        <span className="control-name">{current?.name ?? "Feed"}</span>
-        <svg
-          className="control-chevron"
-          width="11"
-          height="11"
-          viewBox="0 0 12 8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
+      <div className="control-row">
+        <button
+          className="control-trigger"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          data-testid="feed-control"
         >
-          <path d="M1 1l5 5 5-5" strokeLinecap="round" />
-        </svg>
-      </button>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+          </svg>
+          <span className="control-name">{current?.name ?? "Feed"}</span>
+          <svg
+            className="control-chevron"
+            width="11"
+            height="11"
+            viewBox="0 0 12 8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <path d="M1 1l5 5 5-5" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {/* A button as well as the pull, for the people and devices that
+            cannot pull: the desktop rail and anyone who never tries. */}
+        <button
+          className={`icon-btn control-refresh${refreshing ? " is-spinning" : ""}`}
+          onClick={() => onRefresh()}
+          disabled={refreshing}
+          title="Refresh"
+          aria-label="Refresh the feed"
+          data-testid="feed-refresh"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
 
       {open && (
         <div className="control-panel">

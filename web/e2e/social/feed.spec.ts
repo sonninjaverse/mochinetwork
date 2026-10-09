@@ -85,6 +85,52 @@ test("opening a post keeps the document alive", async ({ page }) => {
   expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true);
 });
 
+/**
+ * Coming back is not the same as arriving. The feed is fetched, and a restored
+ * scroll position with nothing under it lands at the top — the remembered
+ * list is what makes the browser's own restoration mean something.
+ */
+test("coming back to the feed lands where it was left", async ({ page }) => {
+  test.skip(process.env.E2E_LOCAL !== "1", "requires the local feed fixture");
+  await page.goto("/popular/");
+  const cards = page.locator("article").filter({ has: page.locator(".post-body") });
+  await expect(cards.first()).toBeVisible({ timeout: 60_000 });
+
+  // The feed refetches once the viewer resolves; interacting during that
+  // second render is a moving target, not a scroll.
+  await expect.poll(() => page.locator("article").count()).toBeGreaterThan(9);
+  await page.waitForTimeout(800);
+
+  // Into the page, past the first screenful, so there is a place to lose.
+  await page.mouse.wheel(0, 2500);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(400);
+
+  // Click a post that is already on screen, by coordinates: locator.click()
+  // scrolls its target into view first, which moves the page by itself and
+  // makes the position this test is about meaningless.
+  const point = await page.evaluate(() => {
+    const bodies = Array.from(document.querySelectorAll("article .post-body"));
+    for (const body of bodies) {
+      const rect = body.getBoundingClientRect();
+      if (rect.top > 80 && rect.bottom < window.innerHeight - 40) {
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }
+    }
+    return null;
+  });
+  expect(point).not.toBeNull();
+  const before = await page.evaluate(() => window.scrollY);
+
+  await page.mouse.click(point!.x, point!.y);
+  await expect(page).toHaveURL(/\/0x[0-9a-f]+\/\d+\/?$/i);
+
+  await page.goBack();
+  await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY), { timeout: 10_000 })
+    .toBeGreaterThan(before * 0.6);
+});
+
 /// Home without an account has nothing to draw from, so it says so.
 test("home asks a signed-out reader to join a community", async ({ page }) => {
   await page.goto("/");
