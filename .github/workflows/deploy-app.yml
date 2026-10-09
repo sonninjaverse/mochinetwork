@@ -64,6 +64,12 @@ jobs:
 
       - run: pnpm build
         working-directory: web
+        # The app's on-chain reads run over Alchemy's Monad RPC. The key lives
+        # in a repository secret, never in .env.production: this file is public
+        # and the bundle is public, but a repo full of keys is a bad habit.
+        # An unset secret falls back to the public RPC in the env file.
+        env:
+          NEXT_PUBLIC_MONAD_RPC_HTTP: ${{ secrets.ALCHEMY_MONAD_RPC }}
 
       - run: pnpm release
         working-directory: web
