@@ -38,7 +38,9 @@ it("survives a corrupt value rather than throwing", () => {
 it("seals a saved list so the ids are not readable in storage", async () => {
   const envelope = await sealVault(await key(), ["4", "2"]);
   expect(envelope.v).toBe(2);
-  expect(JSON.stringify(envelope)).not.toContain("4");
+  // Base64 has no quotes or brackets, so the serialised list cannot appear in
+  // the ciphertext the way it does in the plaintext copy.
+  expect(JSON.stringify(envelope)).not.toContain('["4","2"]');
 });
 
 it("opens a sealed list only with the key that sealed it", async () => {
